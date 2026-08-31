@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Multiverse Cable">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0"   stop-color="#3dff8b"/>
+      <stop offset=".5"  stop-color="#57e6ff"/>
+      <stop offset="1"   stop-color="#c86bff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="13" fill="#0b0d14"/>
+  <!-- rabbit-ear antenna -->
+  <path d="M24 15 L32 26 L40 15" fill="none" stroke="url(#g)" stroke-width="3.2"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- CRT screen -->
+  <rect x="12" y="26" width="40" height="26" rx="5" fill="none" stroke="url(#g)" stroke-width="3.2"/>
+  <!-- scanlines -->
+  <g stroke="url(#g)" stroke-width="2" opacity=".55" stroke-linecap="round">
+    <path d="M18 34h12"/><path d="M18 39h20"/><path d="M18 44h8"/>
+  </g>
+  <circle cx="45" cy="44" r="2.6" fill="#3dff8b"/>
+</svg>
