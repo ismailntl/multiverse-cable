@@ -534,6 +534,37 @@ const server = http.createServer(async (req, res) => {
       return json(res, 202, { queued: count, remaining: requestBatch(count) });
     }
 
+    // --- feedback ----------------------------------------------------------
+
+    if (req.method === 'POST' && url.pathname === '/api/feedback') {
+      if (limited(res, req, 'dmca')) return; // reuse the low-volume limiter
+      const b = JSON.parse((await readBody(req)) || '{}');
+      const message = String(b.message ?? '').trim().slice(0, 2000);
+      if (message.length < 3) return json(res, 400, { error: 'tell us a bit more' });
+
+      // Same content rules as everything else people can type in public
+      const verdict = await moderate(message);
+      if (!verdict.allowed) return json(res, 422, { error: verdict.reason });
+
+      const user = await currentUser(req);
+      const kind = ['general', 'bug', 'idea', 'content'].includes(b.kind) ? b.kind : 'general';
+      const row = await db.addFeedback({
+        userId: user?.id ?? null,
+        email: (b.email ? String(b.email).trim().slice(0, 200) : null) ?? user?.email ?? null,
+        message, kind,
+        page: String(b.page ?? '').slice(0, 300),
+        userAgent: String(req.headers['user-agent'] ?? '').slice(0, 300),
+        ip: clientIp(req),
+      });
+      console.log(`[feedback] ${kind}: ${message.slice(0, 120)}`);
+      return json(res, 201, { ok: true, id: row?.id ?? null });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/admin/feedback') {
+      if (!(await isAdmin(req))) return json(res, 403, { error: 'forbidden' });
+      return json(res, 200, { open: await db.openFeedback(50) });
+    }
+
     // --- static ------------------------------------------------------------
 
     if (req.method === 'GET' && url.pathname.startsWith('/videos/')) {

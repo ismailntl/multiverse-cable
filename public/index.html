@@ -642,6 +642,17 @@
      sibling of the player now: always on, never covering the picture. */
   /* quiz badge: stands in for the provenance badge only until the round resolves */
   .badge.quiz { background: #2b1d5e; color: #e7dfff; box-shadow: inset 0 0 0 1px #7c4dff; }
+  /* Feedback: a small persistent affordance. Deliberately reachable for guests,
+     since the people most likely to report a broken channel never sign up. */
+  .fbbtn { position: fixed; right: 14px; bottom: 14px; z-index: 40;
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 999px; padding: 10px 16px; min-height: 44px; cursor: pointer;
+    font-family: var(--ui); font-size: 14px; box-shadow: 0 6px 20px #0008; }
+  .fbbtn:hover { border-color: var(--cyan); color: var(--cyan); }
+  body.isfs .fbbtn { display: none; }
+  @media (max-width: 760px) {
+    .fbbtn { right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); padding: 9px 14px; }
+  }
   .rai { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px;
     /* Deliberately off-palette so the game reads as the interactive thing on
        the page rather than another grey panel. */
@@ -1127,6 +1138,8 @@
     <a href="/policy" target="_blank">Content &amp; copyright policy</a>
     <button type="button" class="linkish" id="dmcaLink">Report a clip / DMCA</button>
   </footer>
+  <button type="button" class="fbbtn" id="fbBtn" aria-haspopup="dialog">💬 Feedback</button>
+
 </div>
 
 <script>
@@ -1247,8 +1260,17 @@ function openModal(opts) {
     const label = document.createElement('label');
     label.className = 'field';
     label.appendChild(document.createTextNode(f.label || f.id));
-    const el = document.createElement(f.type === 'textarea' ? 'textarea' : 'input');
-    if (f.type && f.type !== 'textarea') el.type = f.type;
+    const tag = f.type === 'textarea' ? 'textarea' : f.type === 'select' ? 'select' : 'input';
+    const el = document.createElement(tag);
+    if (f.type === 'select') {
+      for (const o of (f.options || [])) {
+        const opt = document.createElement('option');
+        opt.value = o.value; opt.textContent = o.label;
+        el.appendChild(opt);
+      }
+    } else if (f.type && f.type !== 'textarea') {
+      el.type = f.type;
+    }
     if (f.placeholder) el.placeholder = f.placeholder;
     if (f.maxlength) el.maxLength = f.maxlength;
     if (f.type === 'textarea' && f.rows) el.rows = f.rows;
@@ -2562,6 +2584,41 @@ setMode('show'); setAuthMode('login'); renderAcctBtn();
 tune(true); refresh();
 setInterval(refresh, 5000);
 setInterval(() => { if (player.paused || player.ended) tune(true); }, 30000);
+
+// --- feedback ---------------------------------------------------------------
+on('fbBtn', () => openModal({
+  title: 'Tell us what you think',
+  intro: 'Bugs, ideas, or something that aired that should not have. Guests welcome — email is optional and only used to follow up.',
+  fields: [
+    { id: 'kind', label: 'What kind of feedback?', type: 'select', options: [
+        { value: 'general', label: 'General' },
+        { value: 'bug', label: 'Something is broken' },
+        { value: 'idea', label: 'An idea' },
+        { value: 'content', label: 'Something that aired' } ] },
+    { id: 'message', label: 'Your feedback', type: 'textarea', rows: 4, placeholder: 'What happened, or what would make this better?' },
+    { id: 'email', label: 'Email (optional)', type: 'email', placeholder: 'you@example.com' },
+  ],
+  confirmText: 'Send feedback',
+  onConfirm: async (vals, ui) => {
+    const message = (vals.message || '').trim();
+    if (message.length < 3) { ui.setError('Tell us a bit more than that.'); return; }
+    ui.setBusy && ui.setBusy(true);
+    try {
+      await api('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, kind: vals.kind || 'general', email: vals.email || '', page: location.pathname }),
+      });
+      ui.setOk('Thanks — that went straight to the team.');
+      setTimeout(ui.close, 1200);
+    } catch (e) {
+      ui.setError(e.message);
+    } finally {
+      ui.setBusy && ui.setBusy(false);
+    }
+  },
+}));
+
 </script>
 </body>
 </html>

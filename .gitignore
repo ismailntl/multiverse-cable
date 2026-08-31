@@ -8,3 +8,4 @@ data/*.log
 gpu-worker/.venv/
 *.pem
 docs/hostinger-env.txt
+promo/
