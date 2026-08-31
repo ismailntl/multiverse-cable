@@ -1,37 +1,65 @@
 #!/usr/bin/env bash
-# One-time provisioning of the GPU spot worker for scheduled batch generation.
+# Provision a GPU worker fleet for Multiverse Cable.
 #
-# Creates: security group (worker port open only to this server's IP), key pair,
-# and a PERSISTENT SPOT g5.xlarge (A10G 24GB) in ca-central-1 that installs the
-# worker on first boot and can be stopped/started daily by scripts/batch.js.
-# The instance carries an idle watchdog: if no generation happens for 45 min it
-# powers itself off, so a crashed orchestrator can't burn credits.
+# Defaults to us-east-1 g6e.xlarge (L40S 48GB) ON-DEMAND, because it has a
+# default VPC, real G-instance quota, and the headroom to run the larger LTX
+# checkpoints. Spot is cheaper but this account has ZERO G-spot quota in
+# us-east-1/us-east-2; ca-central-1 has spot quota but only g5 (A10G 24GB) and
+# no default VPC. Override with REGION / ITYPE / MARKET / COUNT.
 #
-# Usage: AWS_PROFILE=376129873757_AdministratorAccess bash scripts/provision-gpu.sh
+# Each instance self-installs the worker on first boot and carries an idle
+# watchdog that powers the box off after 45 idle minutes, so a crashed
+# orchestrator can't quietly burn credits.
+#
+# Usage:
+#   AWS_PROFILE=376129873757_AdministratorAccess bash scripts/provision-gpu.sh
+#   COUNT=4 bash scripts/provision-gpu.sh        # 4-GPU fleet
+#   MARKET=spot REGION=ca-central-1 ITYPE=g5.xlarge bash scripts/provision-gpu.sh
 set -euo pipefail
 
-REGION="${REGION:-ca-central-1}"
-ITYPE="${ITYPE:-g5.xlarge}"
-NAME=ic-gpu-worker
-PLATFORM_IP="${PLATFORM_IP:-$(curl -s https://checkip.amazonaws.com)}"
+REGION="${REGION:-us-east-1}"
+ITYPE="${ITYPE:-g6e.xlarge}"
+COUNT="${COUNT:-1}"
+MARKET="${MARKET:-on-demand}"
+NAME=mc-gpu-worker
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TOKEN="$(openssl rand -hex 24)"
+PLATFORM_IP="${PLATFORM_IP:-$(curl -s https://checkip.amazonaws.com)}"
 
 aws() { command aws --region "$REGION" "$@"; }
 
-echo "== provisioning $ITYPE spot in $REGION; worker reachable only from $PLATFORM_IP =="
+echo "== $COUNT x $ITYPE ($MARKET) in $REGION; worker reachable only from $PLATFORM_IP =="
+
+# Reuse a token across the fleet so one env var authenticates every worker
+if [ -f "$ROOT/data/instance.json" ]; then
+  TOKEN=$(python3 -c "import json;print(json.load(open('$ROOT/data/instance.json'))['token'])" 2>/dev/null || openssl rand -hex 24)
+else
+  TOKEN="$(openssl rand -hex 24)"
+fi
 
 VPC=$(aws ec2 describe-vpcs --filters Name=is-default,Values=true --query 'Vpcs[0].VpcId' --output text)
+[ "$VPC" = "None" ] && { echo "ERROR: no default VPC in $REGION"; exit 1; }
+
+# Not every AZ offers every GPU type, and the ones that do run out of capacity —
+# collect every candidate public subnet and try them in turn at launch time.
+SUBNETS=""
+for AZ in $(aws ec2 describe-instance-type-offerings --location-type availability-zone \
+    --filters Name=instance-type,Values="$ITYPE" --query 'InstanceTypeOfferings[].Location' --output text); do
+  S=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=$VPC Name=availability-zone,Values=$AZ \
+    Name=map-public-ip-on-launch,Values=true --query 'Subnets[0].SubnetId' --output text)
+  [ -n "$S" ] && [ "$S" != "None" ] && SUBNETS="$SUBNETS $S:$AZ"
+done
+[ -z "$SUBNETS" ] && { echo "ERROR: no public subnet in an AZ offering $ITYPE"; exit 1; }
+echo "vpc=$VPC candidate subnets:$SUBNETS"
 
 SG=$(aws ec2 describe-security-groups --filters Name=group-name,Values=$NAME Name=vpc-id,Values=$VPC \
   --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null || true)
 if [ "$SG" = "None" ] || [ -z "$SG" ]; then
   SG=$(aws ec2 create-security-group --group-name $NAME --description "multiverse-cable GPU worker" \
     --vpc-id "$VPC" --query GroupId --output text)
-  aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 8189 --cidr "$PLATFORM_IP/32"
-  aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 22 --cidr "$PLATFORM_IP/32"
+  aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 8189 --cidr "$PLATFORM_IP/32" >/dev/null
+  aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 22   --cidr "$PLATFORM_IP/32" >/dev/null
 fi
-echo "security group: $SG"
+echo "sg=$SG"
 
 if ! aws ec2 describe-key-pairs --key-names $NAME >/dev/null 2>&1; then
   aws ec2 create-key-pair --key-name $NAME --query KeyMaterial --output text > ~/.ssh/$NAME.pem
@@ -41,64 +69,89 @@ fi
 AMI=$(aws ssm get-parameter \
   --name /aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id \
   --query Parameter.Value --output text)
-echo "AMI: $AMI"
+echo "ami=$AMI"
 
-USERDATA=$(cat <<EOF | base64 -w0
+WORKER_B64=$(base64 -w0 "$ROOT/gpu-worker/worker.py")
+REQS=$(cat "$ROOT/gpu-worker/requirements.txt")
+
+USERDATA=$(base64 -w0 <<EOF
 #!/bin/bash
+exec > /var/log/mc-setup.log 2>&1
 set -x
-mkdir -p /opt/ic && cd /opt/ic
-cat > worker.py.b64 <<'PYEOF'
-$(base64 -w0 "$ROOT/gpu-worker/worker.py")
-PYEOF
-base64 -d worker.py.b64 > worker.py
+mkdir -p /opt/mc && cd /opt/mc
+echo "$WORKER_B64" | base64 -d > worker.py
 cat > requirements.txt <<'REQEOF'
-$(cat "$ROOT/gpu-worker/requirements.txt")
+$REQS
 REQEOF
 apt-get update -y && apt-get install -y python3-venv python3-pip
-python3 -m venv venv && ./venv/bin/pip install --upgrade pip
+python3 -m venv venv
+./venv/bin/pip install --upgrade pip
 ./venv/bin/pip install -r requirements.txt
-cat > /etc/systemd/system/ic-worker.service <<'SVCEOF'
+cat > /etc/systemd/system/mc-worker.service <<'SVCEOF'
 [Unit]
 Description=multiverse-cable GPU worker
 After=network.target
 [Service]
 Environment=WORKER_TOKEN=$TOKEN
-Environment=HF_HOME=/opt/ic/hf
-WorkingDirectory=/opt/ic
-ExecStart=/opt/ic/venv/bin/python /opt/ic/worker.py
+Environment=HF_HOME=/opt/mc/hf
+Environment=PRELOAD=1
+WorkingDirectory=/opt/mc
+ExecStart=/opt/mc/venv/bin/python /opt/mc/worker.py
 Restart=always
+RestartSec=20
 [Install]
 WantedBy=multi-user.target
 SVCEOF
-systemctl daemon-reload && systemctl enable --now ic-worker
-# Idle watchdog: power off if no generation activity for 45 min (and 30 min uptime grace)
-cat > /opt/ic/watchdog.sh <<'WDEOF'
+systemctl daemon-reload && systemctl enable --now mc-worker
+cat > /opt/mc/watchdog.sh <<'WDEOF'
 #!/bin/bash
 up=\$(cut -d. -f1 /proc/uptime)
-[ "\$up" -lt 1800 ] && exit 0
-f=/tmp/ic-last-activity
+[ "\$up" -lt 3600 ] && exit 0
+f=/tmp/mc-last-activity
 if [ ! -f "\$f" ] || [ \$(( \$(date +%s) - \$(stat -c %Y "\$f") )) -gt 2700 ]; then
-  shutdown -h now "ic idle watchdog"
+  shutdown -h now "mc idle watchdog"
 fi
 WDEOF
-chmod +x /opt/ic/watchdog.sh
-echo '*/5 * * * * root /opt/ic/watchdog.sh' > /etc/cron.d/ic-watchdog
-touch /tmp/ic-last-activity
+chmod +x /opt/mc/watchdog.sh
+echo '*/5 * * * * root /opt/mc/watchdog.sh' > /etc/cron.d/mc-watchdog
+touch /tmp/mc-last-activity
 EOF
 )
 
-IID=$(aws ec2 run-instances \
-  --image-id "$AMI" --instance-type "$ITYPE" --key-name $NAME \
-  --security-group-ids "$SG" \
-  --instance-market-options 'MarketType=spot,SpotOptions={SpotInstanceType=persistent,InstanceInterruptionBehavior=stop}' \
-  --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=150,VolumeType=gp3,DeleteOnTermination=true}' \
-  --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$NAME},{Key=project,Value=multiverse-cable}]" \
-  --user-data "$USERDATA" \
-  --query 'Instances[0].InstanceId' --output text)
+MARKET_ARGS=()
+if [ "$MARKET" = "spot" ]; then
+  MARKET_ARGS=(--instance-market-options 'MarketType=spot,SpotOptions={SpotInstanceType=persistent,InstanceInterruptionBehavior=stop}')
+fi
 
-echo "instance: $IID (installing worker + model on first boot, ~15-30 min)"
+IIDS=""
+for PAIR in $SUBNETS; do
+  SUBNET="${PAIR%%:*}"; AZ="${PAIR##*:}"
+  echo "-- trying $AZ ($SUBNET)"
+  if IIDS=$(aws ec2 run-instances \
+      --image-id "$AMI" --instance-type "$ITYPE" --key-name $NAME --count "$COUNT" \
+      --security-group-ids "$SG" --subnet-id "$SUBNET" \
+      "${MARKET_ARGS[@]}" \
+      --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=300,VolumeType=gp3,DeleteOnTermination=true}' \
+      --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$NAME},{Key=project,Value=multiverse-cable}]" \
+      --user-data "$USERDATA" \
+      --query 'Instances[].InstanceId' --output text 2>/tmp/mc-launch-err); then
+    echo "launched in $AZ"
+    break
+  fi
+  tail -1 /tmp/mc-launch-err
+  IIDS=""
+done
+[ -z "$IIDS" ] && { echo "ERROR: no AZ had $COUNT x $ITYPE capacity"; exit 1; }
 
-cat > "$ROOT/data/instance.json" <<EOF
-{ "instanceId": "$IID", "region": "$REGION", "profile": "${AWS_PROFILE:-default}", "token": "$TOKEN" }
-EOF
-echo "wrote data/instance.json — scripts/batch.js drives it from here"
+echo "instances: $IIDS"
+
+python3 - "$REGION" "${AWS_PROFILE:-default}" "$TOKEN" $IIDS <<'PY' > "$ROOT/data/instance.json"
+import json, sys
+region, profile, token, *ids = sys.argv[1:]
+json.dump({"region": region, "profile": profile, "token": token,
+           "instanceIds": ids, "instanceId": ids[0]}, sys.stdout, indent=2)
+PY
+
+echo "wrote data/instance.json"
+echo "first boot installs torch/diffusers and downloads model weights (~20-40 min)."
+echo "watch: bash scripts/gpu-status.sh"

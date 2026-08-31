@@ -6,21 +6,39 @@
 <title>Multiverse Cable</title>
 <style>
   :root {
+    /* accents (unchanged palette) */
     --green: #3dff8b; --amber: #ffc857; --pink: #ff5ec7; --cyan: #4de2ff;
-    --bg: #05060a; --panel: #0d1017; --line: #1d2230; --text: #d7e0ea; --dim: #6b7688;
+    --red: #ff7a7a;
+    /* surfaces + type */
+    --bg: #05060a; --panel: #10141c; --panel-2: #0a0e15; --line: #232b3a;
+    --line-soft: #1a2130;
+    --text: #e8eef5; --dim: #97a3b4; --faint: #7d8798;
+    --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    --r: 10px;
   }
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0; background: var(--bg); color: var(--text); min-height: 100vh;
-    font-family: "Courier New", ui-monospace, monospace;
+    font-family: var(--ui); font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
     background-image: radial-gradient(circle at 20% 0%, #16203a 0%, transparent 45%),
                       radial-gradient(circle at 85% 10%, #2a1030 0%, transparent 40%);
+    background-attachment: fixed;
   }
-  .wrap { max-width: 1240px; margin: 0 auto; padding: 18px; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 16px 18px 40px; }
+  .mono { font-family: var(--mono); }
 
-  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+  :focus-visible {
+    outline: 2px solid var(--cyan); outline-offset: 2px; border-radius: 4px;
+  }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
   h1 {
-    margin: 0; font-size: 30px; letter-spacing: 4px;
+    margin: 0; font-family: var(--mono); font-size: 23px; line-height: 1.2;
+    letter-spacing: 2.5px; font-weight: 700;
     background: linear-gradient(90deg, var(--green), var(--cyan), var(--pink));
     -webkit-background-clip: text; background-clip: text; color: transparent;
     animation: hue 8s linear infinite;
@@ -28,20 +46,23 @@
   @keyframes hue { to { filter: hue-rotate(360deg); } }
   header .sub { color: var(--dim); font-size: 13px; }
   .ticker {
-    overflow: hidden; white-space: nowrap; border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line); margin: 10px 0 16px; padding: 6px 0;
-    font-size: 12px; color: var(--amber); background: #0a0d14;
+    overflow: hidden; white-space: nowrap; border-top: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line-soft); margin: 10px 0 14px; padding: 6px 0;
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: .5px;
+    color: var(--amber); background: #0a0d14;
   }
   .ticker span { display: inline-block; padding-left: 100%; animation: slide 42s linear infinite; }
   @keyframes slide { to { transform: translateX(-100%); } }
 
-  .layout { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(300px, 1fr); gap: 16px; }
-  @media (max-width: 940px) { .layout { grid-template-columns: 1fr; } }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 332px); gap: 16px;
+            align-items: start; }
+  @media (max-width: 1040px) { .layout { grid-template-columns: 1fr; } }
 
+  /* ---------- TV ---------- */
   .tv { position: relative; background: #000; border: 3px solid #222a38; border-radius: 14px; overflow: hidden;
         box-shadow: 0 0 40px #3dff8b18, inset 0 0 60px #000; }
   .tv video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; }
-  .tv .scanlines { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay; opacity: .45;
+  .tv .scanlines { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay; opacity: .35;
     background: repeating-linear-gradient(0deg, #000 0 1px, transparent 1px 3px); }
   .tv .static { position: absolute; inset: 0; display: none; pointer-events: none;
     background: repeating-conic-gradient(#111 0% .0001%, #999 .0001% .0002%);
@@ -49,93 +70,318 @@
   @keyframes flick { to { transform: translateY(2px) } }
   .tv.tuning .static { display: block; }
   .badge {
-    position: absolute; top: 12px; left: 12px; font-size: 11px; letter-spacing: 2px;
-    background: #c0182d; color: #fff; padding: 4px 9px; border-radius: 3px; font-weight: bold;
+    position: absolute; top: 12px; left: 12px; font-family: var(--mono); font-size: 12px;
+    letter-spacing: 1.5px; background: #c0182d; color: #fff; padding: 5px 10px;
+    border-radius: 4px; font-weight: 700;
   }
   .badge.ad { background: var(--amber); color: #201400; }
-  .badge.archive { background: #4a5568; }
-  .chyron { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 14px;
-    background: linear-gradient(transparent, #000d); display: flex; justify-content: space-between;
-    align-items: baseline; gap: 10px; font-size: 14px; }
-  .chyron .title { color: var(--green); font-weight: bold; letter-spacing: 1px; }
+  .badge.archive { background: #4a5568; color: #fff; }
+  .badge.upload { background: var(--cyan); color: #04222b; }
+  /* floating overlay layer: everything here sits ON TOP of the video */
+  .tvui { position: absolute; inset: 0; pointer-events: none; transition: opacity .25s ease; }
+  .tvui > * { pointer-events: auto; }
+  .tvui::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 86px;
+    background: linear-gradient(#000a, transparent); pointer-events: none; }
+  .tv.uihidden .tvui, .tv.uihidden .chatcol { opacity: 0; pointer-events: none; }
+  .tv.uihidden { cursor: none; }
+
+  .chyron { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 14px 11px;
+    background: linear-gradient(transparent, #000b 45%, #000f);
+    display: grid; gap: 3px; font-family: var(--mono); font-size: 14px;
+    text-shadow: 0 1px 3px #000c; }
+  .chyron-main { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .chyron-main > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    min-width: 0; flex: 1 1 auto; }
+  .chyron-main > .credit { flex: 0 0 auto; }
+  .chyron .title { color: var(--green); font-weight: 700; letter-spacing: 1px; }
   .chyron .ch { color: var(--amber); }
-  .chyron .credit { color: var(--dim); font-size: 12px; }
-  .tvbtns { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
-  .tvbtns button { background: #000a; color: var(--text); border: 1px solid var(--line);
-    border-radius: 6px; padding: 6px 10px; cursor: pointer; font-family: inherit; font-size: 12px; }
+  .chyron .credit { color: #cbd5e1; font-size: 13px; white-space: nowrap; }
+  .chyron-next { font-size: 12.5px; color: #c6d0dd; display: flex; gap: 8px; align-items: baseline;
+    overflow: hidden; white-space: nowrap; }
+  .chyron-next .lbl { color: var(--pink); letter-spacing: 1.5px; flex: 0 0 auto; }
+  .chyron-next .txt { overflow: hidden; text-overflow: ellipsis; }
+  .tvbtns { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; flex-wrap: wrap;
+            justify-content: flex-end; }
+  .tvbtns button { background: #000a; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    color: var(--text); border: 1px solid #ffffff2e;
+    border-radius: 7px; padding: 6px 10px; cursor: pointer; font-family: var(--ui); font-size: 13px; }
   .tvbtns button:hover { border-color: var(--green); color: var(--green); }
+  .tvbtns button[aria-pressed="true"] { border-color: var(--green); color: var(--green); background: #04140a99; }
 
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
-  .panel h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: 2px; color: var(--amber); text-transform: uppercase; }
-  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
-  .tabs button { flex: 1; background: #070a10; border: 1px solid var(--line); color: var(--dim);
-    padding: 7px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; letter-spacing: 1px; }
-  .tabs button.on { border-color: var(--green); color: var(--green); background: #0a1710; }
+  /* ---------- stage: TV + chat side by side ---------- */
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr) clamp(240px, 19vw, 300px);
+           gap: 14px; position: relative; align-items: stretch; }
+  .stage > .tv { min-width: 0; }
+  @media (max-width: 1040px) { .stage { grid-template-columns: 1fr; } }
 
-  form { display: grid; gap: 8px; }
-  input, textarea, select {
-    width: 100%; background: #070a10; border: 1px solid var(--line); border-radius: 6px;
-    color: var(--text); padding: 9px 10px; font-family: inherit; font-size: 13px;
+  /* cinema mode: side panels vanish, TV takes the full container, chat floats over it */
+  body.cinema .side { display: none; }
+  body.cinema .layout { grid-template-columns: minmax(0, 1fr); }
+  body.cinema .stage { grid-template-columns: minmax(0, 1fr); }
+  body.cinema .chatcol, .tv > .chatcol {
+    position: absolute; top: 0; right: 0; bottom: 0; width: min(330px, 36%);
+    z-index: 6; padding: 10px; transition: opacity .25s ease;
   }
-  textarea { resize: vertical; min-height: 58px; }
-  button.go { background: linear-gradient(90deg, var(--green), var(--cyan)); color: #04140a; font-weight: bold;
-    border: 0; border-radius: 6px; padding: 11px; cursor: pointer; font-family: inherit; letter-spacing: 1px; }
-  button.go:hover { filter: brightness(1.12); }
+  body.cinema .chatcol .chatbox, .tv > .chatcol .chatbox {
+    background: #05080ecc; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-color: #ffffff26;
+  }
+  /* when chat floats over the video, keep the chrome clear of it */
+  .tv.chatover .chyron { padding-right: calc(min(330px, 36%) + 18px); }
+  .tv.chatover .tvbtns { right: calc(min(330px, 36%) + 6px); }
+  @media (max-width: 760px) {
+    body.cinema .chatcol { position: static; width: auto; padding: 0; }
+    body.cinema .chatcol .chatbox { background: var(--panel); }
+    .tv.chatover .chyron { padding-right: 14px; }
+    .tv.chatover .tvbtns { right: 10px; }
+  }
+
+  /* ---------- fullscreen ---------- */
+  #tv:fullscreen { width: 100vw; height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
+  #tv:fullscreen video { width: 100%; height: 100%; aspect-ratio: auto; object-fit: contain; }
+  #tv:-webkit-full-screen { width: 100vw; height: 100vh; border: 0; border-radius: 0; }
+  #tv:-webkit-full-screen video { width: 100%; height: 100%; aspect-ratio: auto; object-fit: contain; }
+  #tv:fullscreen .chyron { padding: 56px 26px 20px; font-size: 16px; }
+  #tv:fullscreen .chyron-next { font-size: 14px; }
+  #tv:fullscreen .tvbtns { top: 18px; right: 18px; }
+  #tv:fullscreen .badge { top: 18px; left: 18px; }
+
+  /* ---------- chat ---------- */
+  .chatcol { min-width: 0; display: flex; }
+  .chatbox { display: flex; flex-direction: column; flex: 1; min-height: 0;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  .chathead { display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    border-bottom: 1px solid var(--line-soft); font-family: var(--mono); font-size: 11.5px;
+    letter-spacing: 1.6px; color: var(--amber); text-transform: uppercase; }
+  .chathead .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 8px var(--green); animation: blip 2s ease-in-out infinite; }
+  @keyframes blip { 50% { opacity: .25; } }
+  .chatlist { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column;
+    gap: 7px; font-size: 13.5px; line-height: 1.45; min-height: 180px; max-height: 46vh;
+    overscroll-behavior: contain; }
+  .stage .chatlist { max-height: none; }
+  @media (max-width: 1040px) { .chatlist { max-height: 300px; } }
+  .cmsg { word-wrap: break-word; overflow-wrap: anywhere; }
+  .cmsg .cname { color: var(--cyan); font-weight: 600; }
+  .cmsg .ctext { color: var(--text); }
+  .cmsg.sys { color: var(--faint); font-family: var(--mono); font-size: 12px; letter-spacing: .3px;
+    border-left: 2px solid #2b3547; padding-left: 8px; }
+  .cmsg.sys .ctext { color: var(--faint); }
+  .chatnote { padding: 10px 12px; font-size: 13px; color: var(--dim); border-top: 1px solid var(--line-soft); }
+  .chatnote button { font-size: 13px; }
+  .chatfoot form { display: block; padding: 9px 10px 10px; border-top: 1px solid var(--line-soft); }
+  .chatinput { display: flex; gap: 7px; }
+  .chatinput input { padding: 9px 10px; font-size: 14px; }
+  .chatinput button { background: var(--panel-2); border: 1px solid var(--line); color: var(--green);
+    border-radius: 8px; padding: 8px 13px; cursor: pointer; font-family: var(--ui); font-size: 13.5px;
+    font-weight: 600; flex: 0 0 auto; }
+  .chatinput button:hover { border-color: var(--green); }
+  .chatinput button[disabled] { opacity: .5; cursor: default; }
+  .chatmeta { display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
+              margin-top: 6px; }
+  .chatmeta .ccount { font-family: var(--mono); font-size: 11.5px; color: var(--faint); flex: 0 0 auto; }
+  .chatmeta .ccount.over { color: var(--red); }
+  .chatmeta .msg { font-size: 12.5px; }
+
+  /* ---------- keyboard hint ---------- */
+  .kbdhint { display: flex; align-items: center; gap: 10px; justify-content: space-between;
+    margin-top: 10px; padding: 7px 12px; border: 1px solid var(--line-soft); border-radius: 8px;
+    background: #0a0e15; color: var(--dim); font-size: 12.5px; }
+  .kbdhint kbd { font-family: var(--mono); font-size: 11.5px; color: var(--text); background: #171e2b;
+    border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; }
+  .kbdhint .x { background: none; border: 0; color: var(--faint); font-size: 17px; line-height: 1;
+    cursor: pointer; padding: 0 4px; }
+  .kbdhint .x:hover { color: var(--text); }
+
+  /* ---------- pricing readout ---------- */
+  .pricebox { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline;
+    background: #131a26; border: 1px solid var(--line-soft); border-left: 3px solid var(--green);
+    border-radius: 6px; padding: 9px 11px; font-size: 13px; color: var(--dim); }
+  .pricebox b { color: var(--text); font-family: var(--mono); }
+  .pricebox .usd { color: var(--faint); font-size: 12px; }
+
+  /* ---------- panels ---------- */
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+           padding: 18px; margin-bottom: 16px; }
+  .panel:last-child { margin-bottom: 0; }
+  .panel h2 {
+    margin: 0 0 6px; font-size: 13px; letter-spacing: 1.6px; color: var(--amber);
+    text-transform: uppercase; font-weight: 700;
+  }
+  .panel .hint { color: var(--dim); font-size: 13px; margin: 0 0 14px; }
+  .panel h2 + form, .panel h2 + .tabs, .panel h2 + ul, .panel h2 + div { margin-top: 14px; }
+
+  .tabs { display: flex; gap: 8px; }
+  .tabs + form, .tabs + div { margin-top: 14px; }
+  .tabs button { flex: 1; background: var(--panel-2); border: 1px solid var(--line); color: var(--dim);
+    padding: 10px 8px; border-radius: 8px; cursor: pointer; font-family: var(--ui);
+    font-size: 14px; font-weight: 600; }
+  .tabs button:hover { color: var(--text); border-color: #37415a; }
+  .tabs button.on { border-color: var(--green); color: var(--green); background: #0d1b14; }
+
+  form { display: grid; gap: 12px; }
+  label.field { display: grid; gap: 6px; font-size: 13px; color: var(--dim); }
+  input, textarea, select {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+    color: var(--text); padding: 11px 12px; font-family: var(--ui); font-size: 15px; line-height: 1.4;
+  }
+  input::placeholder, textarea::placeholder { color: #6f7b8d; }
+  input:focus, textarea:focus, select:focus {
+    outline: 2px solid var(--cyan); outline-offset: 1px; border-color: var(--cyan);
+  }
+  textarea { resize: vertical; min-height: 76px; }
+  select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--dim) 50%),
+           linear-gradient(135deg, var(--dim) 50%, transparent 50%);
+           background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+           background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
+  input[type="file"] { padding: 9px 12px; font-size: 13px; color: var(--dim); }
+  input[type="file"]::file-selector-button {
+    background: #1a2333; border: 1px solid var(--line); color: var(--text); font-family: var(--ui);
+    font-size: 13px; padding: 7px 12px; border-radius: 6px; margin-right: 12px; cursor: pointer;
+  }
+  input[type="file"]::file-selector-button:hover { border-color: var(--cyan); color: var(--cyan); }
+
+  button.go { background: linear-gradient(90deg, var(--green), var(--cyan)); color: #04140a;
+    font-weight: 700; border: 0; border-radius: 8px; padding: 13px 16px; cursor: pointer;
+    font-family: var(--ui); font-size: 15px; letter-spacing: .3px; }
+  button.go:hover { filter: brightness(1.1); }
+  button.go[disabled] { opacity: .5; cursor: default; filter: none; }
   button.ghost { background: transparent; border: 1px solid var(--line); color: var(--dim);
-    border-radius: 6px; padding: 8px; cursor: pointer; font-family: inherit; font-size: 12px; }
-  .msg { font-size: 12px; color: var(--dim); min-height: 15px; line-height: 1.4; }
-  .msg.ok { color: var(--green); } .msg.err { color: #ff6b6b; }
-  .row { display: flex; gap: 8px; } .row > * { flex: 1; }
+    border-radius: 8px; padding: 10px 14px; cursor: pointer; font-family: var(--ui); font-size: 14px; }
+  button.ghost:hover { border-color: #39435a; color: var(--text); }
 
-  ul.list { list-style: none; margin: 0; padding: 0; font-size: 13px; }
-  ul.list li { padding: 7px 0; border-bottom: 1px dashed var(--line); display: flex; gap: 8px; justify-content: space-between; }
-  ul.list li:last-child { border-bottom: 0; }
+  .msg { font-size: 13px; color: var(--dim); line-height: 1.5; }
+  .msg:empty { display: none; }
+  .msg.ok { color: var(--green); } .msg.err { color: var(--red); }
+  .msg a, .linkish { color: var(--cyan); text-decoration: underline; cursor: pointer; background: none;
+    border: 0; padding: 0; font: inherit; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; } .row > * { flex: 1; }
+  .check { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: var(--dim);
+           line-height: 1.5; cursor: pointer; }
+  .check input { width: 16px; height: 16px; flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--green); }
+  .check a { color: var(--cyan); }
+
+  ul.list { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  ul.list li { padding: 10px 0; border-bottom: 1px solid var(--line-soft); display: flex; gap: 12px;
+               justify-content: space-between; align-items: baseline; }
+  ul.list li:first-child { padding-top: 0; }
+  ul.list li:last-child { border-bottom: 0; padding-bottom: 0; }
   ul.list .who { color: var(--amber); white-space: nowrap; }
-  ul.list .what { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  ul.list .amt { color: var(--green); white-space: nowrap; }
-  .stats { font-size: 12px; color: var(--dim); line-height: 1.8; }
-  .stats b { color: var(--text); }
-  .wallet { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 10px; }
-  .wallet .credits { color: var(--green); font-size: 20px; font-weight: bold; }
-  .packs { display: grid; gap: 6px; }
-  .packs button { background: #070a10; border: 1px solid var(--line); color: var(--text);
-    padding: 9px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; text-align: left; }
-  .packs button:hover { border-color: var(--amber); }
-  .nextslot { font-size: 13px; } .nextslot .idea { color: var(--text); }
-  footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line);
-    font-size: 11px; color: var(--dim); display: flex; gap: 16px; flex-wrap: wrap; }
-  footer a { color: var(--dim); }
+  ul.list .what { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  ul.list .amt { color: var(--green); white-space: nowrap; font-family: var(--mono); font-size: 13px; }
+  ul.list .muted { color: var(--dim); }
 
-  /* age gate */
-  #gate { position: fixed; inset: 0; background: #05060af2; z-index: 50; display: none;
-    align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(6px); }
-  #gate.show { display: flex; }
-  #gate .card { max-width: 480px; background: var(--panel); border: 1px solid var(--line);
-    border-radius: 12px; padding: 24px; }
-  #gate h2 { color: var(--amber); letter-spacing: 2px; margin: 0 0 12px; font-size: 15px; }
-  #gate p { font-size: 13px; line-height: 1.6; color: var(--text); }
-  #gate .warn { color: var(--pink); }
+  .stats { font-family: var(--mono); font-size: 13px; color: var(--dim); line-height: 1.9; }
+  .stats b { color: var(--text); font-weight: 700; }
+
+  .wallet { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .wallet .who { color: var(--text); font-size: 14px; word-break: break-all; }
+  .wallet .label { color: var(--dim); font-size: 13px; }
+  .wallet .credits { color: var(--green); font-family: var(--mono); font-size: 30px; font-weight: 700;
+                     line-height: 1; white-space: nowrap; }
+  .packs { display: grid; gap: 8px; }
+  .packs button { background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+    padding: 12px 14px; border-radius: 8px; cursor: pointer; font-family: var(--ui); font-size: 14px;
+    text-align: left; }
+  .packs button:hover { border-color: var(--amber); }
+
+  .nextslot { font-size: 14px; }
+  .nextslot .idea { color: var(--text); }
+  .nextslot .empty { color: var(--dim); }
+
+  .costline { display: flex; flex-wrap: wrap; gap: 6px 14px; font-family: var(--mono); font-size: 13px;
+              color: var(--dim); }
+  .costline b { color: var(--text); }
+  .note { font-size: 13px; color: var(--dim); background: #131a26; border: 1px solid var(--line-soft);
+          border-left: 3px solid var(--amber); border-radius: 6px; padding: 10px 12px; line-height: 1.5; }
+  .note b { color: var(--text); }
+  .bar { height: 4px; border-radius: 4px; background: #1a2130; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 40%; border-radius: 4px;
+             background: linear-gradient(90deg, var(--green), var(--cyan)); animation: crawl 1.1s ease-in-out infinite; }
+  @keyframes crawl { 0% { transform: translateX(-110%) } 100% { transform: translateX(260%) } }
+  .pill { font-family: var(--mono); font-size: 12px; letter-spacing: .5px; padding: 2px 8px;
+          border-radius: 999px; border: 1px solid var(--line); color: var(--dim); white-space: nowrap; }
+  .pill.pending { color: var(--amber); border-color: #4a3d1c; background: #241d0c; }
+  .pill.approved { color: var(--green); border-color: #1d4430; background: #0d1e15; }
+  .pill.rejected { color: var(--red); border-color: #4a2424; background: #221010; }
+
+  footer { margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line-soft);
+    font-size: 13px; color: var(--dim); display: flex; gap: 8px 20px; flex-wrap: wrap; align-items: center; }
+  footer a { color: var(--dim); }
+  footer .legal { color: var(--text); }
+
+  /* ---------- modal component ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: #05060ae6; backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); z-index: 60; display: none;
+    align-items: center; justify-content: center; padding: 20px; overflow-y: auto;
+  }
+  .overlay.show { display: flex; }
+  .modal-card {
+    width: 100%; max-width: 500px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 24px; box-shadow: 0 24px 70px #000a, 0 0 0 1px #ffffff08 inset;
+    margin: auto;
+  }
+  .modal-card h2 { margin: 0 0 12px; font-size: 15px; letter-spacing: 1.6px; text-transform: uppercase;
+                   color: var(--amber); font-weight: 700; }
+  .modal-card p { margin: 0 0 12px; font-size: 14px; line-height: 1.6; color: var(--text); }
+  .modal-card p.dim { color: var(--dim); font-size: 13px; }
+  .modal-card .warn { color: var(--pink); }
+  .modal-body { display: grid; gap: 14px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-actions > * { flex: 1; }
+  #gate .modal-card { max-width: 520px; }
+
+  /* ---------- toasts ---------- */
+  #toasts { position: fixed; right: 16px; bottom: 16px; z-index: 80; display: grid; gap: 10px;
+            max-width: min(380px, calc(100vw - 32px)); }
+  .toast { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--cyan);
+    border-radius: 8px; padding: 12px 14px; font-size: 14px; color: var(--text); line-height: 1.5;
+    box-shadow: 0 12px 34px #000a; animation: pop .18s ease-out; }
+  .toast.ok { border-left-color: var(--green); }
+  .toast.err { border-left-color: var(--red); }
+  @keyframes pop { from { opacity: 0; transform: translateY(8px); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001s !important; animation-iteration-count: 1 !important; }
+  }
 </style>
 </head>
 <body>
 
-<div id="gate">
-  <div class="card">
-    <h2>⚠ BEFORE YOU TUNE IN</h2>
-    <p><b>This channel broadcasts AI-generated content 24/7 with no human reviewing
+<!-- ---------- age gate (in-page modal) ---------- -->
+<div id="gate" class="overlay">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+    <h2 id="gateTitle">⚠ Before you tune in</h2>
+    <p><b>This channel broadcasts AI-generated content 24/7, with no human reviewing
     each clip before it airs.</b></p>
     <p class="warn">It may contain surreal, absurd, or <b>mature content</b> unsuitable
     for minors. You must be <b>18 or older</b> to watch.</p>
     <p>Every clip is machine-generated fiction. Any resemblance to real people,
     brands, or events is unintended — report anything that slips through and it
     comes off air immediately.</p>
-    <div class="row" style="margin-top:16px">
-      <button class="go" id="gateYes">I AM 18+ — TUNE IN</button>
-      <button class="ghost" id="gateNo">LEAVE</button>
+    <div class="modal-actions">
+      <button class="go" type="button" id="gateYes">I am 18+ — tune in</button>
+      <button class="ghost" type="button" id="gateNo">Leave</button>
     </div>
-    <div class="msg" style="margin-top:8px">Your confirmation is recorded with a timestamp.</div>
+    <p class="dim" style="margin:12px 0 0">Your confirmation is recorded with a timestamp.</p>
   </div>
 </div>
+
+<!-- ---------- reusable modal ---------- -->
+<div id="modal" class="overlay">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle"></h2>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="msg" id="modalMsg" style="margin-top:12px"></div>
+    <div class="modal-actions" id="modalActions">
+      <button class="go" type="button" id="modalOk">Submit</button>
+      <button class="ghost" type="button" id="modalCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
 
 <div class="wrap">
   <header>
@@ -145,21 +391,52 @@
   <div class="ticker"><span id="tickerText">TUNING INTO THE SIGNAL…</span></div>
 
   <div class="layout">
-    <div>
-      <div class="tv tuning" id="tv">
-        <video id="player" autoplay muted playsinline></video>
-        <div class="scanlines"></div>
-        <div class="static"></div>
-        <div class="badge" id="badge">● LIVE</div>
-        <div class="tvbtns">
-          <button id="muteBtn">🔇 unmute</button>
-          <button id="skipBtn" title="jump to whatever is on now">⏭ resync</button>
-          <button id="reportBtn" title="report this clip">⚑ report</button>
+    <div class="main">
+      <div class="stage" id="stage">
+        <div class="tv tuning" id="tv">
+          <video id="player" autoplay muted playsinline></video>
+          <div class="scanlines"></div>
+          <div class="static"></div>
+          <div class="tvui" id="tvui">
+            <div class="badge" id="badge">● LIVE</div>
+            <div class="tvbtns">
+              <button type="button" id="muteBtn">🔇 unmute</button>
+              <button type="button" id="cinemaBtn" aria-pressed="false" title="hide the side panels (c)">▭ cinema</button>
+              <button type="button" id="fsBtn" aria-pressed="false" title="fullscreen (f)">⛶ fullscreen</button>
+              <button type="button" id="skipBtn" title="jump to whatever is on now">⏭ resync</button>
+              <button type="button" id="reportBtn" title="report this clip">⚑ report</button>
+            </div>
+            <div class="chyron">
+              <div class="chyron-main">
+                <span><span class="ch" id="ch">CH ---</span> &nbsp; <span class="title" id="title">TUNING…</span></span>
+                <span class="credit" id="credit"></span>
+              </div>
+              <div class="chyron-next"><span class="lbl">NEXT</span><span class="txt" id="nextLine">open slot — highest bid programs it</span></div>
+            </div>
+          </div>
         </div>
-        <div class="chyron">
-          <span><span class="ch" id="ch">CH ---</span> &nbsp; <span class="title" id="title">TUNING…</span></span>
-          <span class="credit" id="credit"></span>
-        </div>
+
+        <aside class="chatcol" id="chatDock" aria-label="Live chat">
+          <div class="chatbox">
+            <div class="chathead"><span class="dot"></span> Live chat</div>
+            <div class="chatlist" id="chatList" aria-live="polite"></div>
+            <div class="chatfoot">
+              <div class="chatnote" id="chatOut">Connecting to the chat relay…</div>
+              <form id="chatForm" onsubmit="return false" style="display:none">
+                <div class="chatinput">
+                  <input id="chatText" maxlength="240" autocomplete="off" placeholder="say something to the multiverse">
+                  <button type="button" id="chatSend">Send</button>
+                </div>
+                <div class="chatmeta"><span class="msg" id="chatMsg"></span><span class="ccount" id="chatCounter">0/240</span></div>
+              </form>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <div class="kbdhint" id="kbdHint">
+        <span><kbd>F</kbd> fullscreen · <kbd>M</kbd> mute · <kbd>C</kbd> cinema mode</span>
+        <button type="button" class="x" id="kbdHintX" aria-label="Dismiss shortcut hint" title="Dismiss">×</button>
       </div>
 
       <div class="panel" style="margin-top:14px">
@@ -168,66 +445,117 @@
       </div>
     </div>
 
-    <div>
+    <div class="side">
       <!-- account -->
       <div class="panel" id="acctPanel">
         <h2 id="acctTitle">Your account</h2>
         <div id="loggedOut">
           <div class="tabs">
-            <button id="tabLogin" class="on">SIGN IN</button>
-            <button id="tabSignup">CREATE ACCOUNT</button>
+            <button type="button" id="tabLogin" class="on">Sign in</button>
+            <button type="button" id="tabSignup">Create account</button>
           </div>
           <form id="authForm" onsubmit="return false">
-            <input id="email" type="email" placeholder="email" autocomplete="email">
-            <input id="password" type="password" placeholder="password (8+ chars)" autocomplete="current-password">
-            <div id="signupExtras" style="display:none">
-              <label class="msg"><input type="checkbox" id="ageConfirmed" style="width:auto"> I confirm I am 18 or older</label>
-              <label class="msg"><input type="checkbox" id="termsAccepted" style="width:auto"> I accept the <a href="/policy" target="_blank">content policy</a> and understand clips are AI-generated and may include mature content</label>
+            <label class="field">Email
+              <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+            </label>
+            <label class="field">Password
+              <input id="password" type="password" placeholder="at least 8 characters" autocomplete="current-password">
+            </label>
+            <div id="signupExtras" style="display:none;gap:10px;">
+              <label class="check"><input type="checkbox" id="ageConfirmed"> <span>I confirm I am 18 or older.</span></label>
+              <label class="check"><input type="checkbox" id="termsAccepted"> <span>I accept the <a href="/policy" target="_blank">content policy</a> and understand clips are AI-generated and may include mature content.</span></label>
             </div>
-            <button class="go" id="authBtn">SIGN IN</button>
+            <button class="go" type="button" id="authBtn">Sign in</button>
             <div class="msg" id="authMsg"></div>
           </form>
         </div>
         <div id="loggedIn" style="display:none">
           <div class="wallet">
-            <span><span id="userEmail" class="who"></span><br><span class="msg">broadcast credits</span></span>
+            <span>
+              <span id="userEmail" class="who"></span><br>
+              <span class="label">broadcast credits</span>
+            </span>
             <span class="credits" id="credits">0</span>
           </div>
           <div class="packs" id="packs"></div>
-          <div class="msg" id="buyMsg"></div>
-          <button class="ghost" id="logoutBtn" style="margin-top:8px">sign out</button>
+          <div class="msg" id="buyMsg" style="margin-top:10px"></div>
+          <button class="ghost" type="button" id="logoutBtn" style="margin-top:12px">Sign out</button>
         </div>
       </div>
 
       <!-- bidding -->
       <div class="panel">
         <h2>Bid for the next slot</h2>
+        <p class="hint">Highest bid programs whatever airs next.</p>
         <div class="tabs">
-          <button id="tabShow" class="on">📺 SHOW</button>
-          <button id="tabAd">📣 AD</button>
+          <button type="button" id="tabShow" class="on">📺 Show</button>
+          <button type="button" id="tabAd">📣 Ad</button>
         </div>
         <form id="bidForm" onsubmit="return false">
-          <div id="adFields" style="display:none">
-            <input id="brand" maxlength="40" placeholder="fictional brand name (e.g. GlorpCo)">
-            <input id="product" maxlength="80" placeholder="what it sells (e.g. sentient mattresses)">
-            <input id="cta" maxlength="80" placeholder="call to action (e.g. 'Call now, dimension 7')">
+          <div id="adFields" style="display:none;gap:12px;">
+            <label class="field">Fictional brand
+              <input id="brand" maxlength="40" placeholder="e.g. GlorpCo">
+            </label>
+            <label class="field">What it sells
+              <input id="product" maxlength="80" placeholder="e.g. sentient mattresses">
+            </label>
+            <label class="field">Call to action
+              <input id="cta" maxlength="80" placeholder="e.g. Call now, dimension 7">
+            </label>
           </div>
-          <textarea id="idea" maxlength="300" placeholder="what should air? e.g. 'a cooking show where the ingredients cook the chef'"></textarea>
-          <select id="genre"><option value="">genre: surprise me</option></select>
-          <input id="amount" type="number" min="1" step="1" placeholder="bid (credits) — highest wins next slot">
-          <button class="go" id="bidBtn">PLACE BID</button>
+          <label class="field" id="ideaLabel">What should air?
+            <textarea id="idea" maxlength="300" placeholder="e.g. a cooking show where the ingredients cook the chef"></textarea>
+          </label>
+          <label class="field">Genre
+            <select id="genre"><option value="">Surprise me</option></select>
+          </label>
+          <label class="field" id="slotLenField" style="display:none">Slot length
+            <select id="slotLen"></select>
+          </label>
+          <div class="pricebox" id="priceBox" style="display:none"></div>
+          <label class="field">Your bid (credits)
+            <input id="amount" type="number" min="1" step="1" placeholder="e.g. 25">
+          </label>
+          <button class="go" type="button" id="bidBtn">Place bid</button>
           <div class="msg" id="bidMsg">Original characters only — no real people, brands, or franchises.</div>
         </form>
       </div>
 
+      <!-- upload -->
+      <div class="panel" id="uploadPanel">
+        <h2>Upload your own clip</h2>
+        <p class="hint">Put your own footage on the channel — a paid slot.</p>
+        <div id="uploadOut" class="msg">Sign in above to upload a clip.</div>
+        <div id="uploadIn" style="display:none">
+          <div class="costline" id="uploadCost"></div>
+          <form id="uploadForm" onsubmit="return false" style="margin-top:14px">
+            <label class="field">Video file
+              <input id="uploadFile" type="file" accept="video/mp4,video/webm,video/quicktime">
+            </label>
+            <label class="field">Clip title
+              <input id="uploadTitle" maxlength="60" placeholder="max 60 characters">
+            </label>
+            <div class="note">Uploads are <b>reviewed by a human before they air</b>. Nothing goes
+              out live the moment you upload it — you'll see the status below once it's decided.</div>
+            <button class="go" type="button" id="uploadBtn">Upload clip</button>
+            <div class="bar" id="uploadBar" style="display:none"><i></i></div>
+            <div class="msg" id="uploadMsg"></div>
+          </form>
+          <div id="myUploadsWrap" style="display:none;margin-top:18px">
+            <h2 style="margin-bottom:12px">Your uploads</h2>
+            <ul class="list" id="myUploads"></ul>
+          </div>
+        </div>
+      </div>
+
       <div class="panel">
         <h2>Next slot goes to</h2>
-        <div class="nextslot" id="nextslot">nobody yet — the machine picks a random dimension</div>
+        <div class="nextslot" id="nextslot"><span class="empty">Nobody yet — the machine picks a random dimension.</span></div>
       </div>
 
       <div class="panel">
         <h2>Bid board</h2>
-        <ul class="list" id="bids"><li><span class="what">no pending bids</span></li></ul>
+        <ul class="list" id="bids"><li><span class="what muted">No pending bids.</span></li></ul>
       </div>
 
       <div class="panel">
@@ -238,9 +566,9 @@
   </div>
 
   <footer>
-    <span>AI-generated · 18+ · no human pre-review</span>
-    <a href="/policy" target="_blank">content &amp; copyright policy</a>
-    <span id="dmcaLink" style="cursor:pointer;text-decoration:underline">report a clip / DMCA</span>
+    <span class="legal"><b>AI-generated · 18+ only · no human pre-review</b></span>
+    <a href="/policy" target="_blank">Content &amp; copyright policy</a>
+    <button type="button" class="linkish" id="dmcaLink">Report a clip / DMCA</button>
   </footer>
 </div>
 
@@ -249,6 +577,14 @@ const $ = (id) => document.getElementById(id);
 const player = $('player'), tv = $('tv');
 let currentClipId = null, mode = 'show', authMode = 'login', state = {};
 
+// sensible fallbacks until /api/state ships the upload config
+const UPLOAD_DEFAULTS = { cost: 50, sec: 30, mb: 100 };
+const uploadCfg = () => ({
+  cost: Number(state.uploadCost ?? UPLOAD_DEFAULTS.cost),
+  sec: Number(state.maxUploadSec ?? UPLOAD_DEFAULTS.sec),
+  mb: Number(state.maxUploadMb ?? UPLOAD_DEFAULTS.mb),
+});
+
 async function api(url, opts) {
   const r = await fetch(url, opts);
   const b = await r.json().catch(() => ({}));
@@ -256,6 +592,96 @@ async function api(url, opts) {
   return b;
 }
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
+const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(s || '').trim());
+
+// ---- toasts ----
+function toast(text, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind ? ' ' + kind : '');
+  el.textContent = text;
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 6000);
+}
+
+// ---- reusable modal ----
+let modalState = null;
+function closeModal() {
+  $('modal').classList.remove('show');
+  $('modalOk').disabled = false;
+  modalState = null;
+}
+/**
+ * openModal({ title, intro, fields:[{id,label,type,placeholder,maxlength,rows}],
+ *             confirmText, cancelText, onConfirm(values, ctx) })
+ * ctx = { setError, setOk, setBusy, close, replace(html) }
+ */
+function openModal(opts) {
+  const body = $('modalBody'), msg = $('modalMsg');
+  $('modalTitle').textContent = opts.title || '';
+  body.innerHTML = '';
+  msg.textContent = ''; msg.className = 'msg';
+
+  if (opts.intro) {
+    const p = document.createElement('p');
+    p.className = 'dim'; p.style.margin = '0'; p.textContent = opts.intro;
+    body.appendChild(p);
+  }
+  const inputs = {};
+  for (const f of (opts.fields || [])) {
+    const label = document.createElement('label');
+    label.className = 'field';
+    label.appendChild(document.createTextNode(f.label || f.id));
+    const el = document.createElement(f.type === 'textarea' ? 'textarea' : 'input');
+    if (f.type && f.type !== 'textarea') el.type = f.type;
+    if (f.placeholder) el.placeholder = f.placeholder;
+    if (f.maxlength) el.maxLength = f.maxlength;
+    if (f.type === 'textarea' && f.rows) el.rows = f.rows;
+    el.id = 'modalField_' + f.id;
+    label.appendChild(el);
+    body.appendChild(label);
+    inputs[f.id] = el;
+  }
+
+  const ok = $('modalOk'), cancel = $('modalCancel');
+  ok.textContent = opts.confirmText || 'Submit';
+  cancel.textContent = opts.cancelText || 'Cancel';
+  ok.disabled = false;
+  $('modalActions').style.display = 'flex';
+
+  const ctx = {
+    setError: (t) => { msg.textContent = t; msg.className = 'msg err'; },
+    setOk: (t) => { msg.textContent = t; msg.className = 'msg ok'; },
+    setBusy: (b, label) => { ok.disabled = b; ok.textContent = b ? (label || 'Working…') : (opts.confirmText || 'Submit'); },
+    close: closeModal,
+    done: (text) => {
+      body.innerHTML = '';
+      const p = document.createElement('p');
+      p.textContent = text;
+      body.appendChild(p);
+      msg.textContent = ''; msg.className = 'msg';
+      ok.style.display = 'none';
+      cancel.textContent = 'Close';
+    },
+  };
+  ok.style.display = '';
+
+  modalState = { opts, inputs, ctx };
+  $('modal').classList.add('show');
+  const first = Object.values(inputs)[0];
+  setTimeout(() => (first ? first.focus() : cancel.focus()), 30);
+}
+$('modalOk').onclick = async () => {
+  if (!modalState) return;
+  const values = {};
+  for (const [k, el] of Object.entries(modalState.inputs)) values[k] = el.value.trim();
+  try { await modalState.opts.onConfirm(values, modalState.ctx); }
+  catch (e) { modalState.ctx.setBusy(false); modalState.ctx.setError('✗ ' + e.message); }
+};
+$('modalCancel').onclick = () => closeModal();
+$('modal').addEventListener('click', (e) => { if (e.target === $('modal')) closeModal(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('modal').classList.contains('show')) closeModal();
+});
 
 // ---- age gate (recorded locally; account signup records it server-side) ----
 if (!localStorage.getItem('ic_age_ok')) $('gate').classList.add('show');
@@ -276,13 +702,20 @@ async function tune(force = false) {
     tv.classList.add('tuning');
     $('ch').textContent = 'CH ' + now.clip.channel;
     $('title').textContent = (now.clip.title || '').toUpperCase();
+
+    const src = now.clip.source;
     const b = $('badge');
-    b.className = 'badge' + (now.clip.isAd ? ' ad' : now.clip.source === 'archive' ? ' archive' : '');
-    b.textContent = now.clip.isAd ? '📣 PAID AD' : now.clip.source === 'archive' ? '▣ FOUND FOOTAGE' : '● LIVE';
+    b.className = 'badge' + (now.clip.isAd ? ' ad' : src === 'archive' ? ' archive' : src === 'upload' ? ' upload' : '');
+    b.textContent = now.clip.isAd ? '📣 PAID AD'
+      : src === 'archive' ? '▣ FOUND FOOTAGE'
+      : src === 'upload' ? '▲ VIEWER UPLOAD'
+      : '● LIVE';
     $('credit').textContent =
-      now.clip.source === 'ad' ? `paid slot · ${now.clip.bidder}` :
-      now.clip.source === 'bid' ? `programmed by ${now.clip.bidder} · ${now.clip.amount}cr` :
-      now.clip.source === 'archive' ? 'public domain archives' : 'auto-transmission';
+      src === 'ad' ? `paid slot · ${now.clip.bidder}` :
+      src === 'bid' ? `programmed by ${now.clip.bidder} · ${now.clip.amount}cr` :
+      src === 'upload' ? `uploaded by ${now.clip.bidder || 'a viewer'}` :
+      src === 'archive' ? 'public domain archives' : 'auto-transmission';
+
     player.src = '/videos/' + now.clip.file;
     player.currentTime = Math.max(0, now.offset);
     await player.play().catch(() => {});
@@ -291,27 +724,297 @@ async function tune(force = false) {
 }
 player.addEventListener('ended', () => tune(true));
 player.addEventListener('error', () => setTimeout(() => tune(true), 2000));
-$('muteBtn').onclick = () => {
+function toggleMute() {
   player.muted = !player.muted;
   $('muteBtn').textContent = player.muted ? '🔇 unmute' : '🔊 mute';
+  $('muteBtn').setAttribute('aria-pressed', player.muted ? 'false' : 'true');
   if (!player.muted) player.play().catch(() => {});
-};
+}
+$('muteBtn').onclick = toggleMute;
 $('skipBtn').onclick = () => tune(true);
 $('reportBtn').onclick = () => reportClip();
 
+/* ---------------------------------------------------------------
+   cinema mode / fullscreen / keyboard shortcuts
+   --------------------------------------------------------------- */
+const stage = $('stage'), chatDock = $('chatDock');
+
+function isCinema() { return document.body.classList.contains('cinema'); }
+function setCinema(on, persist = true) {
+  document.body.classList.toggle('cinema', !!on);
+  const b = $('cinemaBtn');
+  b.textContent = on ? '▣ exit cinema' : '▭ cinema';
+  b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  if (persist) { try { localStorage.setItem('mc_cinema', on ? '1' : '0'); } catch {} }
+  syncChatPlacement();
+  chatScrollToBottom();
+}
+
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+function toggleFullscreen() {
+  try {
+    if (fsEl()) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); }
+      return;
+    }
+    const req = tv.requestFullscreen || tv.webkitRequestFullscreen;
+    if (!req) { toast('This browser will not let the page go fullscreen.'); return; }
+    const p = req.call(tv);
+    if (p && p.catch) p.catch(() => toast('Fullscreen was blocked by the browser.'));
+  } catch { toast('Fullscreen was blocked by the browser.'); }
+}
+$('fsBtn').onclick = toggleFullscreen;
+$('cinemaBtn').onclick = () => setCinema(!isCinema());
+
+// in fullscreen the chat rides along as a floating column over the video
+function syncChatPlacement() {
+  if (fsEl() === tv) { if (chatDock.parentElement !== tv) tv.appendChild(chatDock); }
+  else if (chatDock.parentElement !== stage) stage.appendChild(chatDock);
+  // chat floating over the picture? then keep the chyron + buttons clear of it
+  tv.classList.toggle('chatover', fsEl() === tv || (isCinema() && window.innerWidth > 760));
+}
+window.addEventListener('resize', syncChatPlacement);
+
+let hideTimer = null, overControl = false;
+function typingInChat() {
+  const a = document.activeElement;
+  return !!a && (a.id === 'chatText' || a.tagName === 'INPUT' || a.tagName === 'TEXTAREA');
+}
+function showTvUi() {
+  tv.classList.remove('uihidden');
+  clearTimeout(hideTimer);
+  if (fsEl() === tv) {
+    hideTimer = setTimeout(() => {
+      if (!overControl && !typingInChat()) tv.classList.add('uihidden');
+    }, 3000);
+  }
+}
+for (const ev of ['mousemove', 'pointerdown', 'touchstart', 'keydown']) {
+  tv.addEventListener(ev, showTvUi, { passive: true });
+}
+for (const el of [document.querySelector('.tvbtns'), chatDock]) {
+  el.addEventListener('mouseenter', () => { overControl = true; showTvUi(); });
+  el.addEventListener('mouseleave', () => { overControl = false; showTvUi(); });
+}
+function onFsChange() {
+  const on = fsEl() === tv;
+  const b = $('fsBtn');
+  b.textContent = on ? '⛶ exit fullscreen' : '⛶ fullscreen';
+  b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  b.title = on ? 'leave fullscreen (f)' : 'fullscreen (f)';
+  syncChatPlacement();
+  if (!on) { clearTimeout(hideTimer); tv.classList.remove('uihidden'); }
+  else showTvUi();
+  chatScrollToBottom();
+}
+document.addEventListener('fullscreenchange', onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
+
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  const tag = (t && t.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || (t && t.isContentEditable)) return;
+  if ($('gate').classList.contains('show') || $('modal').classList.contains('show')) return;
+  const k = (e.key || '').toLowerCase();
+  if (k === 'f') { e.preventDefault(); toggleFullscreen(); }
+  else if (k === 'm') { e.preventDefault(); toggleMute(); }
+  else if (k === 'c') { e.preventDefault(); setCinema(!isCinema()); }
+});
+
+// dismissible shortcut hint
+try { if (localStorage.getItem('mc_hint') === '0') $('kbdHint').style.display = 'none'; } catch {}
+$('kbdHintX').onclick = () => {
+  $('kbdHint').style.display = 'none';
+  try { localStorage.setItem('mc_hint', '0'); } catch {}
+};
+
+try { setCinema(localStorage.getItem('mc_cinema') === '1', false); } catch { setCinema(false, false); }
+
+/* ---------------------------------------------------------------
+   live chat
+   --------------------------------------------------------------- */
+const CHAT_MAX = 240;
+const chat = { lastId: '', seen: new Set(), available: true, signedIn: null, busy: false, skip: 0 };
+
+function chatNearBottom() {
+  const l = $('chatList');
+  return l.scrollHeight - l.scrollTop - l.clientHeight < 90;
+}
+function chatScrollToBottom() { const l = $('chatList'); l.scrollTop = l.scrollHeight; }
+
+function chatNote(html) { $('chatOut').innerHTML = html; $('chatOut').style.display = 'block'; }
+function chatSetComposer(on) {
+  $('chatForm').style.display = on ? 'block' : 'none';
+  $('chatOut').style.display = on ? 'none' : 'block';
+}
+function chatUnavailable() {
+  chat.available = false;
+  chatSetComposer(false);
+  chatNote('Chat unavailable — the relay is not responding. Retrying…');
+  if (!$('chatList').childElementCount) {
+    $('chatList').innerHTML = '<div class="cmsg sys"><span class="ctext">chat unavailable</span></div>';
+  }
+}
+function chatAuthState(signedIn) {
+  if (!chat.available) return;
+  if (chat.signedIn === signedIn) return;
+  chat.signedIn = signedIn;
+  chatSetComposer(signedIn);
+  if (!signedIn) chatNote('<b style="color:var(--text)">Sign in to chat</b> — everyone here is watching the same broadcast.');
+}
+function chatAppend(messages) {
+  const list = $('chatList');
+  const stick = chatNearBottom();
+  let added = 0;
+  for (const m of messages) {
+    if (!m || m.id == null || chat.seen.has(m.id)) continue;
+    chat.seen.add(m.id);
+    chat.lastId = m.id;
+    const row = document.createElement('div');
+    row.className = 'cmsg' + (m.system ? ' sys' : '');
+    // untrusted user input — always escaped
+    row.innerHTML = m.system
+      ? `<span class="ctext">${esc(m.text)}</span>`
+      : `<span class="cname">${esc(m.name)}</span> <span class="ctext">${esc(m.text)}</span>`;
+    list.appendChild(row);
+    added++;
+  }
+  while (list.childElementCount > 200) list.removeChild(list.firstElementChild);
+  if (added && stick) chatScrollToBottom();
+}
+async function chatPoll() {
+  if (chat.busy) return;
+  if (!chat.available && chat.skip-- > 0) return;   // back off to ~15s while the relay is down
+  chat.busy = true;
+  try {
+    const r = await fetch('/api/chat?since=' + encodeURIComponent(chat.lastId || ''));
+    if (r.status === 404) { chatUnavailable(); chat.skip = 4; return; }
+    const b = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(b.error || ('HTTP ' + r.status));
+    if (!chat.available) {           // relay came back
+      chat.available = true;
+      const empty = $('chatList').querySelector('.cmsg.sys');
+      if (empty && $('chatList').childElementCount === 1) $('chatList').innerHTML = '';
+      chat.signedIn = null;
+      chatAuthState(!!(state.user));
+    }
+    if (Array.isArray(b.messages)) chatAppend(b.messages);
+  } catch { chatUnavailable(); chat.skip = 4; }
+  finally { chat.busy = false; }
+}
+function chatCount() {
+  const n = $('chatText').value.length;
+  $('chatCounter').textContent = n + '/' + CHAT_MAX;
+  $('chatCounter').classList.toggle('over', n >= CHAT_MAX);
+}
+$('chatText').addEventListener('input', chatCount);
+$('chatText').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); chatSend(); }
+  e.stopPropagation();
+});
+async function chatSend() {
+  const inp = $('chatText'), btn = $('chatSend'), m = $('chatMsg');
+  const text = inp.value.trim();
+  m.className = 'msg'; m.textContent = '';
+  if (!text) return;
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+    });
+    const b = await r.json().catch(() => ({}));
+    if (r.status === 401) { chat.signedIn = null; chatAuthState(false); m.className = 'msg err'; m.textContent = b.error || 'Sign in to chat.'; return; }
+    if (!r.ok) { m.className = 'msg err'; m.textContent = b.error || ('HTTP ' + r.status); return; }
+    inp.value = ''; chatCount();
+    if (b.message) chatAppend([b.message]);
+    chatScrollToBottom();
+  } catch { m.className = 'msg err'; m.textContent = 'Could not reach the chat relay.'; }
+  finally { btn.disabled = false; }
+}
+$('chatSend').onclick = chatSend;
+chatCount();
+chatPoll();
+setInterval(chatPoll, 3000);
+
+/* ---------------------------------------------------------------
+   slot pricing
+   --------------------------------------------------------------- */
+function pricingTable() {
+  const p = state.pricing;
+  if (!p || !Array.isArray(p.show) || !Array.isArray(p.ad)) return null;
+  return p;
+}
+function minCreditsFor(kind, sec) {
+  const p = pricingTable();
+  if (!p) return 1;
+  const row = (kind === 'ad' ? p.ad : p.show).find(r => Number(r.durationSec) === Number(sec));
+  if (row) return Number(row.minCredits);
+  const rate = Number(kind === 'ad' ? p.creditsPerSecondAd : p.creditsPerSecond) || 0;
+  return Math.max(Number(p.minBidCredits) || 1, Math.ceil(sec * rate));
+}
+function slotSec() { return Number($('slotLen').value) || 0; }
+function fillSlotLengths() {
+  const p = pricingTable();
+  if (!p) return;
+  const sel = $('slotLen');
+  const min = Number(p.minSlotSec) || 4, max = Number(p.maxSlotSec) || 15;
+  const key = min + ':' + max;
+  if (sel.dataset.filled === key) return;
+  sel.dataset.filled = key;
+  const want = Number(sel.value) || 0;
+  sel.innerHTML = '';
+  const lengths = [];
+  for (let s = min; s <= max; s += 2) lengths.push(s);
+  for (const s of lengths) {
+    const o = document.createElement('option');
+    o.value = String(s); o.textContent = s + ' seconds';
+    sel.appendChild(o);
+  }
+  const pick = lengths.includes(want) ? want : (lengths.includes(10) ? 10 : lengths[0]);
+  sel.value = String(pick);
+  $('slotLenField').style.display = 'grid';
+  $('priceBox').style.display = 'flex';
+}
+function updatePricing(raiseAmount) {
+  const p = pricingTable();
+  if (!p) { $('priceBox').style.display = 'none'; return; }
+  const sec = slotSec();
+  const min = minCreditsFor(mode, sec);
+  const usd = Number(p.usdPerCredit) ? ' <span class="usd">≈ $' + (min * Number(p.usdPerCredit)).toFixed(2) + '</span>' : '';
+  $('priceBox').innerHTML =
+    `<span>a <b>${esc(String(sec))}s ${mode === 'ad' ? 'ad' : 'show'}</b> costs at least <b>${esc(String(min))} credits</b>${usd}</span>`;
+  const amt = $('amount');
+  amt.min = String(min);
+  amt.placeholder = 'at least ' + min;
+  if (raiseAmount) {
+    const cur = Number(amt.value);
+    if (!amt.value || !Number.isFinite(cur) || cur < min) amt.value = String(min);
+  }
+}
+$('slotLen').onchange = () => updatePricing(true);
+
 // ---- auth ----
+function clearAuthMsg() { const m = $('authMsg'); m.textContent = ''; m.className = 'msg'; m.innerHTML = ''; }
 function setAuthMode(m) {
   authMode = m;
   $('tabLogin').classList.toggle('on', m === 'login');
   $('tabSignup').classList.toggle('on', m === 'signup');
-  $('signupExtras').style.display = m === 'signup' ? 'block' : 'none';
-  $('authBtn').textContent = m === 'signup' ? 'CREATE ACCOUNT' : 'SIGN IN';
+  $('signupExtras').style.display = m === 'signup' ? 'grid' : 'none';
+  $('authBtn').textContent = m === 'signup' ? 'Create account' : 'Sign in';
+  $('password').setAttribute('autocomplete', m === 'signup' ? 'new-password' : 'current-password');
+  clearAuthMsg(); // switching tabs must never leave a stale error behind
 }
 $('tabLogin').onclick = () => setAuthMode('login');
 $('tabSignup').onclick = () => setAuthMode('signup');
 
 $('authBtn').onclick = async () => {
-  const m = $('authMsg'); m.className = 'msg';
+  const m = $('authMsg');
+  clearAuthMsg();
+  const btn = $('authBtn');
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = authMode === 'signup' ? 'Creating…' : 'Signing in…';
   try {
     const body = { email: $('email').value, password: $('password').value };
     if (authMode === 'signup') {
@@ -321,22 +1024,37 @@ $('authBtn').onclick = async () => {
     await api('/api/' + (authMode === 'signup' ? 'signup' : 'login'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
-    m.textContent = '✓ welcome to the signal'; m.className = 'msg ok';
+    m.textContent = '✓ Welcome to the signal.'; m.className = 'msg ok';
     $('password').value = '';
     refresh();
-  } catch (e) { m.textContent = '✗ ' + e.message; m.className = 'msg err'; }
+  } catch (e) {
+    m.className = 'msg err';
+    m.textContent = '✗ ' + e.message;
+    if (authMode === 'login' && /wrong email or password|invalid|no such (user|account)/i.test(e.message)) {
+      m.innerHTML = '✗ ' + esc(e.message) +
+        '<br><span style="color:var(--dim)">No account yet? ' +
+        '<button type="button" class="linkish" id="switchToSignup">Create one instead</button></span>';
+      $('switchToSignup').onclick = () => { setAuthMode('signup'); $('email').focus(); };
+    }
+  } finally { btn.disabled = false; btn.textContent = label; }
 };
-$('logoutBtn').onclick = async () => { await api('/api/logout', { method: 'POST' }); refresh(); };
+$('logoutBtn').onclick = async () => {
+  await api('/api/logout', { method: 'POST' });
+  clearAuthMsg();
+  $('password').value = '';
+  setAuthMode('login');
+  refresh();
+};
 
 // ---- credits ----
 async function buy(packId) {
-  const m = $('buyMsg'); m.className = 'msg';
+  const m = $('buyMsg'); m.className = 'msg'; m.textContent = '';
   try {
     const r = await api('/api/checkout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ packId }),
     });
     if (r.url) { location.href = r.url; return; }
-    m.textContent = r.message || 'credits added'; m.className = 'msg ok';
+    m.textContent = r.message || 'Credits added.'; m.className = 'msg ok';
     refresh();
   } catch (e) { m.textContent = '✗ ' + e.message; m.className = 'msg err'; }
 }
@@ -346,49 +1064,122 @@ function setMode(m) {
   mode = m;
   $('tabShow').classList.toggle('on', m === 'show');
   $('tabAd').classList.toggle('on', m === 'ad');
-  $('adFields').style.display = m === 'ad' ? 'block' : 'none';
+  $('adFields').style.display = m === 'ad' ? 'grid' : 'none';
+  $('ideaLabel').firstChild.nodeValue = m === 'ad' ? "The ad's premise" : 'What should air?';
   $('idea').placeholder = m === 'ad'
-    ? "the ad's premise, e.g. 'the mattress absorbs your regrets while a spokesman weeps with joy'"
-    : "what should air? e.g. 'a cooking show where the ingredients cook the chef'";
-  $('bidBtn').textContent = m === 'ad' ? 'BUY THIS AD SLOT' : 'PLACE BID';
+    ? 'e.g. the mattress absorbs your regrets while a spokesman weeps with joy'
+    : 'e.g. a cooking show where the ingredients cook the chef';
+  $('bidBtn').textContent = m === 'ad' ? 'Buy this ad slot' : 'Place bid';
+  updatePricing(true);
 }
 $('tabShow').onclick = () => setMode('show');
 $('tabAd').onclick = () => setMode('ad');
 
 $('bidBtn').onclick = async () => {
-  const m = $('bidMsg'); m.className = 'msg';
+  const m = $('bidMsg'); m.className = 'msg'; m.textContent = '';
+  const sec = slotSec();
+  const amount = Number($('amount').value);
+  if (pricingTable() && sec) {
+    const min = minCreditsFor(mode, sec);
+    if (!Number.isFinite(amount) || amount < min) {
+      m.className = 'msg err';
+      m.textContent = `✗ A ${sec}s ${mode === 'ad' ? 'ad' : 'show'} costs at least ${min} credits — raise your bid.`;
+      $('amount').focus();
+      return;
+    }
+  }
+  const btn = $('bidBtn'), label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Placing…';
   try {
     const body = {
-      kind: mode, idea: $('idea').value, amount: Number($('amount').value),
+      kind: mode, idea: $('idea').value, amount,
       genre: $('genre').value || undefined,
     };
+    if (sec) body.durationSec = sec;
     if (mode === 'ad') { body.brand = $('brand').value; body.product = $('product').value; body.cta = $('cta').value; }
     const r = await api('/api/bid', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
-    m.textContent = `✓ bid placed — ${r.credits} credits left. Highest bid programs the next slot.`;
+    m.textContent = `✓ Bid placed — ${r.credits} credits left. Highest bid programs the next slot.`;
     m.className = 'msg ok';
     $('idea').value = ''; $('amount').value = '';
+    updatePricing(true);
     refresh();
   } catch (e) { m.textContent = '✗ ' + e.message; m.className = 'msg err'; }
+  finally { btn.disabled = false; btn.textContent = label; }
 };
 
-// ---- dmca ----
-async function reportClip() {
-  const clipId = currentClipId;
-  if (!clipId) return;
-  const claim = prompt('What is wrong with this clip? (copyright claim, or other issue)');
-  if (!claim) return;
-  const email = prompt('Your contact email (required for takedown requests):');
-  if (!email) return;
+// ---- upload ----
+$('uploadBtn').onclick = async () => {
+  const m = $('uploadMsg'), bar = $('uploadBar'), btn = $('uploadBtn');
+  m.className = 'msg'; m.textContent = '';
+  const cfg = uploadCfg();
+  const file = $('uploadFile').files && $('uploadFile').files[0];
+  const title = $('uploadTitle').value.trim();
+
+  const fail = (t) => { m.textContent = '✗ ' + t; m.className = 'msg err'; };
+  if (!file) return fail('Pick a video file first (mp4, webm, or mov).');
+  if (!title) return fail('Give your clip a title.');
+  if (file.size > cfg.mb * 1024 * 1024) {
+    return fail(`That file is ${(file.size / 1048576).toFixed(1)} MB — the limit is ${cfg.mb} MB. Trim or re-encode it and try again.`);
+  }
+
+  btn.disabled = true; btn.textContent = 'Uploading…';
+  bar.style.display = 'block';
+  m.textContent = 'Uploading — this can take a minute on a slow connection. Keep this tab open.';
+  m.className = 'msg';
   try {
-    const r = await api('/api/dmca', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clipId, claim, email, reporter: email }),
+    const r = await api('/api/upload?title=' + encodeURIComponent(title), {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file,
     });
-    alert(`Report ${r.reportId} received.` + (r.removedFromAir ? ' The clip was pulled off air immediately.' : ''));
-    tune(true);
-  } catch (e) { alert('Report failed: ' + e.message); }
+    const st = r.upload && r.upload.status ? r.upload.status : 'pending_review';
+    m.innerHTML = `✓ Uploaded — status: <b>${esc(statusLabel(st))}</b>. It is reviewed by a human before it airs.` +
+      (r.credits !== undefined ? ` ${esc(String(r.credits))} credits left.` : '');
+    m.className = 'msg ok';
+    toast('Clip uploaded. It will air once a human approves it.', 'ok');
+    $('uploadFile').value = ''; $('uploadTitle').value = '';
+    refresh();
+  } catch (e) { fail(e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Upload clip'; bar.style.display = 'none'; }
+};
+function statusLabel(s) {
+  return s === 'pending_review' ? 'awaiting review' : s === 'approved' ? 'approved' : s === 'rejected' ? 'rejected' : s;
+}
+
+// ---- dmca / report ----
+function reportClip() {
+  const clipId = currentClipId;
+  openModal({
+    title: '⚑ Report a clip',
+    intro: clipId
+      ? 'Tell us what is wrong with the clip on air right now — a copyright claim, or any other issue. We review every report and pull clips off air.'
+      : 'Nothing is tuned in yet, but you can still send a report about the channel.',
+    fields: [
+      { id: 'claim', label: 'What is wrong with this clip?', type: 'textarea', rows: 4, maxlength: 1000,
+        placeholder: 'Describe the claim — e.g. this uses my copyrighted footage…' },
+      { id: 'email', label: 'Your contact email', type: 'email',
+        placeholder: 'we need this to follow up on takedowns' },
+    ],
+    confirmText: 'Send report',
+    onConfirm: async (v, ctx) => {
+      if (!v.claim) return ctx.setError('Please describe the problem with the clip.');
+      if (!v.email) return ctx.setError('A contact email is required for takedown requests.');
+      if (!isEmail(v.email)) return ctx.setError('That does not look like a valid email address.');
+      ctx.setBusy(true, 'Sending…');
+      try {
+        const r = await api('/api/dmca', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clipId, claim: v.claim, email: v.email, reporter: v.email }),
+        });
+        ctx.done(`Report ${r.reportId} received.` +
+          (r.removedFromAir ? ' The clip was pulled off air immediately.' : ' We will review it shortly.'));
+        toast('Report received. Thank you.', 'ok');
+        tune(true);
+      } catch (e) { ctx.setBusy(false); ctx.setError('✗ ' + e.message); }
+    },
+  });
 }
 $('dmcaLink').onclick = reportClip;
 
@@ -396,6 +1187,12 @@ $('dmcaLink').onclick = reportClip;
 async function refresh() {
   try {
     const s = await api('/api/state'); state = s;
+
+    // slot pricing + chat auth
+    const hadPricing = !!$('slotLen').dataset.filled;
+    fillSlotLengths();
+    updatePricing(!hadPricing);
+    chatAuthState(!!s.user);
 
     // account
     $('loggedIn').style.display = s.user ? 'block' : 'none';
@@ -408,6 +1205,7 @@ async function refresh() {
         $('packs').innerHTML = '';
         for (const p of s.packs) {
           const btn = document.createElement('button');
+          btn.type = 'button';
           btn.textContent = `${p.label} — $${(p.priceCents / 100).toFixed(2)}` + (s.stripeEnabled ? '' : ' (demo)');
           btn.onclick = () => buy(p.id);
           $('packs').appendChild(btn);
@@ -415,39 +1213,62 @@ async function refresh() {
       }
     }
 
+    // upload panel
+    const cfg = uploadCfg();
+    $('uploadIn').style.display = s.user ? 'block' : 'none';
+    $('uploadOut').style.display = s.user ? 'none' : 'block';
+    $('uploadCost').innerHTML =
+      `<span>cost: <b>${esc(String(cfg.cost))} credits</b></span>` +
+      `<span>max length: <b>${esc(String(cfg.sec))}s</b></span>` +
+      `<span>max size: <b>${esc(String(cfg.mb))} MB</b></span>`;
+
+    const ups = Array.isArray(s.myUploads) ? s.myUploads : [];
+    $('myUploadsWrap').style.display = ups.length ? 'block' : 'none';
+    if (ups.length) {
+      $('myUploads').innerHTML = ups.map(u =>
+        `<li><span class="what">${esc(u.title)}</span>` +
+        `<span class="pill ${u.status === 'approved' ? 'approved' : u.status === 'rejected' ? 'rejected' : 'pending'}">` +
+        `${esc(statusLabel(u.status))}</span>` +
+        `<span class="amt">${esc(String(u.amount ?? ''))}${u.amount != null ? 'cr' : ''}</span></li>`).join('');
+    }
+
     // genres
     if (s.genres && !$('genre').dataset.filled) {
       $('genre').dataset.filled = '1';
       for (const g of s.genres) {
         const o = document.createElement('option');
-        o.value = g.key; o.textContent = 'genre: ' + g.label.toLowerCase();
+        o.value = g.key; o.textContent = g.label;
         $('genre').appendChild(o);
       }
     }
 
     $('nextslot').innerHTML = s.nextSlot
-      ? `<span class="who">${esc(s.nextSlot.name)}</span> · <span class="amt">${s.nextSlot.amount}cr</span>` +
+      ? `<span class="who" style="color:var(--amber)">${esc(s.nextSlot.name)}</span> · <span class="amt" style="color:var(--green)">${esc(String(s.nextSlot.amount))}cr</span>` +
         `${s.nextSlot.kind === 'ad' ? ' · <b style="color:var(--amber)">PAID AD</b>' : ''}` +
         `<br><span class="idea">“${esc(s.nextSlot.idea)}”</span>`
-      : 'nobody yet — the machine picks a random dimension';
+      : '<span class="empty">Nobody yet — the machine picks a random dimension.</span>';
+
+    $('nextLine').innerHTML = s.nextSlot
+      ? `${s.nextSlot.kind === 'ad' ? '📣 ' : ''}“${esc(s.nextSlot.idea)}” — ${esc(s.nextSlot.name)} · ${esc(String(s.nextSlot.amount))}cr`
+      : 'open slot — highest bid programs it';
 
     $('bids').innerHTML = s.pendingBids.length
       ? s.pendingBids.map(b =>
           `<li><span class="who">${b.kind === 'ad' ? '📣' : '📺'} ${esc(b.name)}</span>` +
-          `<span class="what">${esc(b.idea)}</span><span class="amt">${b.amount}cr</span></li>`).join('')
-      : '<li><span class="what">no pending bids — be the first</span></li>';
+          `<span class="what">${esc(b.idea)}</span><span class="amt">${esc(String(b.amount))}cr</span></li>`).join('')
+      : '<li><span class="what muted">No pending bids — be the first.</span></li>';
 
     $('recent').innerHTML = s.recentClips.map(c =>
-      `<li><span class="who">CH ${c.channel}</span><span class="what">${esc(c.title)}</span>` +
-      `<span class="amt">${c.source === 'ad' ? '📣 ad' : c.source === 'bid' ? esc(c.bidder) : c.source === 'archive' ? 'archives' : 'auto'}</span></li>`).join('');
+      `<li><span class="who">CH ${esc(String(c.channel))}</span><span class="what">${esc(c.title)}</span>` +
+      `<span class="amt">${c.source === 'ad' ? '📣 ad' : c.source === 'bid' ? esc(c.bidder) : c.source === 'upload' ? '▲ ' + esc(c.bidder || 'viewer') : c.source === 'archive' ? 'archives' : 'auto'}</span></li>`).join('');
 
     $('stats').innerHTML =
       `backend: <b>${esc(s.backend)}</b> · payments: <b>${s.stripeEnabled ? 'live' : 'demo'}</b><br>` +
-      `library: <b>${s.libraryClips}</b> clips<br>` +
-      `generated today: <b>${s.stats.generatedToday}</b><br>` +
-      `all-time: <b>${s.stats.generated}</b> (failed: ${s.stats.failed})<br>` +
-      `new clip every <b>${s.genIntervalSec}s</b>` +
-      (s.batch?.remaining ? `<br>🔥 batch burst: <b>${s.batch.remaining}</b> queued` : '');
+      `library: <b>${esc(String(s.libraryClips))}</b> clips<br>` +
+      `generated today: <b>${esc(String(s.stats.generatedToday))}</b><br>` +
+      `all-time: <b>${esc(String(s.stats.generated))}</b> (failed: ${esc(String(s.stats.failed))})<br>` +
+      `new clip every <b>${esc(String(s.genIntervalSec))}s</b>` +
+      (s.batch?.remaining ? `<br>🔥 batch burst: <b>${esc(String(s.batch.remaining))}</b> queued` : '');
 
     $('tickerText').textContent =
       (s.recentClips.map(c => `CH ${c.channel} — ${c.title}`).join('   ✦   ') || 'SIGNAL ACQUIRED') +

@@ -7,3 +7,5 @@ imageio[ffmpeg]
 fastapi
 uvicorn
 pydantic>=2
+tiktoken
+protobuf

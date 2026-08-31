@@ -3,12 +3,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './lib/config.js';
 import { store } from './lib/store.js';
-import { startScheduler, requestBatch, batchStatus } from './lib/scheduler.js';
+import { startScheduler, requestBatch, batchStatus, kickNow } from './lib/scheduler.js';
+import * as chat from './lib/chat.js';
 import { startFreeFeed } from './lib/freefeed.js';
-import { activeBackend } from './lib/generate.js';
+import { activeBackend, transcodeUpload } from './lib/generate.js';
+import os from 'node:os';
+import crypto from 'node:crypto';
 import { moderate } from './lib/moderation.js';
 import { GENRES } from './lib/shows.js';
 import { createCheckout, findPack, handleWebhook, stripeEnabled } from './lib/payments.js';
+import { minimumBid, priceTable, quote } from './lib/pricing.js';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -138,6 +142,17 @@ const server = http.createServer(async (req, res) => {
         user: user ? publicUser(user) : null,
         myBids: user ? s.bids.filter((b) => b.userId === user.id).slice(-10).reverse().map(publicBid) : [],
         ledger: user ? store.ledgerFor(user.id, 10) : [],
+        // pricing + uploads
+        pricing: priceTable(),
+        uploadCost: config.uploadCostCredits,
+        maxUploadSec: config.maxUploadSec,
+        maxUploadMb: config.maxUploadMb,
+        myUploads: user
+          ? store.uploadsFor(user.id).map((u) => ({
+              id: u.id, title: u.title, status: u.status, amount: u.amount, createdAt: u.createdAt,
+            }))
+          : [],
+        pendingReview: user && config.adminEmails.includes(user.email) ? store.pendingUploads().length : undefined,
       });
     }
 
@@ -216,9 +231,22 @@ const server = http.createServer(async (req, res) => {
           }
         : null;
 
+      // Longer slots cost more to generate, so they must cost the bidder more.
+      const durationSec = Math.min(
+        config.maxSlotSec,
+        Math.max(config.minSlotSec, Math.floor(Number(b.durationSec) || config.videoDuration))
+      );
+      const floor = minimumBid({ durationSec, kind });
+
       if (!idea) return json(res, 400, { error: 'describe what should air' });
       if (kind === 'ad' && !ad.brand) return json(res, 400, { error: 'ads need a (fictional) brand name' });
       if (!Number.isFinite(amount) || amount < 1) return json(res, 400, { error: 'bid must be at least 1 credit' });
+      if (amount < floor) {
+        return json(res, 400, {
+          error: `a ${durationSec}s ${kind === 'ad' ? 'ad' : 'slot'} costs at least ${floor} credits — raise your bid`,
+          minCredits: floor,
+        });
+      }
       if (user.credits < amount) return json(res, 402, { error: `not enough credits (you have ${user.credits})` });
 
       // Content + copyright gate across every field the advertiser controls
@@ -230,8 +258,161 @@ const server = http.createServer(async (req, res) => {
         return json(res, 402, { error: 'not enough credits' });
       }
       const name = ad?.brand || user.email.split('@')[0];
-      const bid = store.addBid({ userId: user.id, name, idea, amount, genre, kind, ad });
+      const bid = store.addBid({ userId: user.id, name, idea, amount, genre, kind, ad, durationSec });
+      chat.systemMessage(`${name} bought the next slot for ${amount}cr — "${idea.slice(0, 80)}"`);
+      kickNow(); // don't make a paying bidder wait for the idle timer
       return json(res, 201, { bid: publicBid(bid), credits: store.findUser(user.id).credits });
+    }
+
+    // --- live chat ---------------------------------------------------------
+
+    if (req.method === 'GET' && url.pathname === '/api/chat') {
+      return json(res, 200, {
+        messages: chat.since(url.searchParams.get('since') || ''),
+        now: Date.now(),
+        maxLength: chat.maxLength,
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/chat') {
+      const user = currentUser(req);
+      const b = JSON.parse((await readBody(req)) || '{}');
+
+      // Guests may chat under a stable per-browser handle, moderated
+      // identically to members and rate-limited harder.
+      let author;
+      let setCookie = null;
+      if (user) {
+        author = { key: user.id, name: user.email.split('@')[0].slice(0, 20), guest: false };
+      } else if (config.guestChat) {
+        let gid = cookies(req).ic_guest;
+        if (!gid || !/^[a-f0-9]{32}$/.test(gid)) {
+          gid = crypto.randomBytes(16).toString('hex');
+          setCookie = `ic_guest=${gid}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${30 * 86400}` +
+            (config.secureCookies ? '; Secure' : '');
+        }
+        author = { key: `guest:${clientIp(req)}`, name: chat.guestName(gid), guest: true };
+      } else {
+        return json(res, 401, { error: 'sign in to chat' });
+      }
+
+      const result = await chat.post(author, b.text);
+      if (result.error) return json(res, 422, { error: result.error });
+      return json(res, 201, result, setCookie ? { 'Set-Cookie': setCookie } : {});
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/quote') {
+      const durationSec = Math.min(
+        config.maxSlotSec,
+        Math.max(config.minSlotSec, Math.floor(Number(url.searchParams.get('durationSec')) || config.videoDuration))
+      );
+      const kind = url.searchParams.get('kind') === 'ad' ? 'ad' : 'show';
+      return json(res, 200, quote({ durationSec, kind }));
+    }
+
+    // --- paid viewer uploads (human-reviewed before airing) ----------------
+
+    if (req.method === 'POST' && url.pathname === '/api/upload') {
+      const user = currentUser(req);
+      if (!user) return json(res, 401, { error: 'sign in to upload a clip' });
+
+      const title = String(url.searchParams.get('title') ?? '').trim().slice(0, 60);
+      if (!title) return json(res, 400, { error: 'give your clip a title' });
+
+      const verdict = await moderate(title);
+      if (!verdict.allowed) return json(res, 422, { error: verdict.reason });
+
+      const type = String(req.headers['content-type'] ?? '').split(';')[0].toLowerCase();
+      if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(type)) {
+        return json(res, 415, { error: 'upload an mp4, webm, or mov video file' });
+      }
+      const declared = parseInt(req.headers['content-length'] ?? '0', 10);
+      const maxBytes = config.maxUploadMb * 1024 * 1024;
+      if (declared > maxBytes) {
+        return json(res, 413, { error: `file is too large (max ${config.maxUploadMb} MB)` });
+      }
+      if (user.credits < config.uploadCostCredits) {
+        return json(res, 402, {
+          error: `uploading costs ${config.uploadCostCredits} credits (you have ${user.credits})`,
+        });
+      }
+
+      // Stream to a temp file, enforcing the cap as bytes actually arrive
+      const tmp = path.join(os.tmpdir(), `mc-upload-${crypto.randomUUID()}`);
+      const sink = fs.createWriteStream(tmp);
+      let received = 0;
+      let aborted = null;
+      try {
+        await new Promise((resolve, reject) => {
+          req.on('data', (chunk) => {
+            received += chunk.length;
+            if (received > maxBytes) {
+              aborted = `file is too large (max ${config.maxUploadMb} MB)`;
+              req.destroy();
+            }
+          });
+          req.on('error', reject);
+          sink.on('error', reject);
+          sink.on('finish', resolve);
+          req.pipe(sink);
+        });
+      } catch (err) {
+        if (!aborted) aborted = err.message;
+      }
+      if (aborted || received === 0) {
+        fs.unlink(tmp, () => {});
+        return json(res, 413, { error: aborted || 'no file received' });
+      }
+
+      let normalized;
+      try {
+        normalized = await transcodeUpload(tmp, `upload-${crypto.randomUUID()}.mp4`, config.maxUploadSec);
+      } catch (err) {
+        console.warn('[upload] transcode failed:', err.message);
+        return json(res, 422, { error: "that file couldn't be read as a video" });
+      } finally {
+        fs.unlink(tmp, () => {});
+      }
+
+      if (store.adjustCredits(user.id, -config.uploadCostCredits, 'upload', null) === null) {
+        return json(res, 402, { error: 'not enough credits' });
+      }
+
+      // Uploaded video can't be machine-screened the way a prompt can, so it
+      // NEVER airs automatically — a human approves it first.
+      const upload = store.addUpload({
+        userId: user.id,
+        email: user.email,
+        file: normalized.file,
+        duration: normalized.duration,
+        title,
+        amount: config.uploadCostCredits,
+        ip: clientIp(req),
+      });
+      console.log(`[upload] ${upload.id} "${title}" from ${user.email} — awaiting review`);
+      return json(res, 201, {
+        upload: { id: upload.id, title: upload.title, status: upload.status, amount: upload.amount },
+        credits: store.findUser(user.id).credits,
+        message: 'uploaded — a human reviews it before it airs',
+      });
+    }
+
+    // Review queue: admin users (ADMIN_EMAILS) or loopback
+    if (url.pathname.startsWith('/api/admin/uploads')) {
+      const user = currentUser(req);
+      const isAdmin = isLoopback(req) || (user && config.adminEmails.includes(user.email));
+      if (!isAdmin) return json(res, 403, { error: 'forbidden' });
+
+      if (req.method === 'GET') {
+        return json(res, 200, { pending: store.pendingUploads() });
+      }
+      if (req.method === 'POST') {
+        const b = JSON.parse((await readBody(req)) || '{}');
+        const decided = store.reviewUpload(b.id, b.approve === true, b.note ?? null);
+        if (!decided) return json(res, 404, { error: 'no such upload awaiting review' });
+        console.log(`[upload] ${decided.id} ${decided.status}`);
+        return json(res, 200, { upload: decided });
+      }
     }
 
     // --- dmca / takedown ---------------------------------------------------
