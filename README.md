@@ -1,11 +1,36 @@
 # 📺 Multiverse Cable
 
-**multiversecable.com**
+**[multiversecable.com](https://multiversecable.com)** · AGPL-3.0 · Node, Postgres, no framework
 
-A 24/7 AI-generated TV channel. A scheduler continuously generates short absurd
-"broadcasts from other dimensions", stitches them into one endless synced
-stream, and viewers **bid credits to program the next slot** — highest pending
-bid wins each generation cycle.
+A 24/7 AI-generated television channel. Not a feed — a *channel*: everyone
+watching sees the same broadcast at the same moment, off one server clock, and
+it never stops.
+
+Three things make it more than a slop stream:
+
+**It's a game.** Every clip is a call — real or AI? Genuine public-domain
+archival footage is mixed in with generated clips, and provenance is hidden
+until you commit, then revealed with a score and a streak. An AI clip is never
+allowed to finish playing unlabelled; that reveal is a legal constraint, not a
+design flourish.
+
+**You can buy the next slot.** Bids collect in a timed window and only the
+winner generates, so GPU time is never spent on a clip that gets outbid five
+seconds later. Losing bids roll over. Credits move through SQL functions, so a
+balance and its ledger cannot disagree, and a CHECK constraint makes overdraft
+impossible under concurrency.
+
+**It tries not to get banned.** Similar streams were pulled from Twitch and Kick
+over copyright. "Public domain" and "safe to broadcast" are different questions
+— those Betty Boop and Popeye prints are out of copyright but the characters are
+still live trademarks. So: trademark screening on every prompt, a
+public-domain-only archive, takedown that hides rather than deletes (an
+unauthenticated endpoint must not be able to erase a channel), and content
+moderation across 12 languages with nothing involving minors, enforced in five
+layers.
+
+See [docs/POLICY.md](docs/POLICY.md) for the content rules and
+[docs/COSTS.md](docs/COSTS.md) for what it costs to run.
 
 ## How it works
 
