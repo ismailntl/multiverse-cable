@@ -122,7 +122,30 @@ function viewerCount() {
   return viewers.size;
 }
 
-const isLoopback = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+// Loopback alone is NOT proof of local origin: behind a same-host reverse
+// proxy (how this deploys) every internet request arrives from 127.0.0.1. So a
+// loopback caller must also have arrived without proxy headers, and machine
+// callers should present ADMIN_TOKEN.
+const isLoopback = (req) =>
+  ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress) &&
+  !req.headers['x-forwarded-for'] &&
+  !req.headers['forwarded'];
+
+function tokenMatches(a, b) {
+  const ab = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
+}
+
+// Admin = signed-in account in ADMIN_EMAILS, or a caller holding ADMIN_TOKEN,
+// or a genuinely local process when no token is configured.
+async function isAdmin(req) {
+  const token = req.headers['x-admin-token'];
+  if (config.adminToken) return Boolean(token) && tokenMatches(token, config.adminToken);
+  const user = await currentUser(req);
+  if (user && config.adminEmails.includes(user.email)) return true;
+  return isLoopback(req);
+}
 
 const EMAIL_RE = /^[^@\s]+@[^@\s.]+\.[^@\s]+$/;
 
@@ -199,6 +222,11 @@ const server = http.createServer(async (req, res) => {
         return json(res, 400, { error: 'you must confirm you are 18+ and accept the content policy' });
       }
       if (await db.findUserByEmail(email)) return json(res, 409, { error: 'that email already has an account' });
+      // Admin rights key off this address and email is never verified, so an
+      // admin address must not be claimable through public signup.
+      if (config.adminEmails.includes(email)) {
+        return json(res, 403, { error: 'that address cannot be registered here' });
+      }
       const user = await db.createUser({ email, password, ip: clientIp(req), termsVersion: config.termsVersion });
       const token = await db.createSession(user.id);
       return json(res, 201, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(token) });
@@ -441,9 +469,7 @@ const server = http.createServer(async (req, res) => {
 
     // Review queue: admin users (ADMIN_EMAILS) or loopback
     if (url.pathname.startsWith('/api/admin/uploads')) {
-      const user = await currentUser(req);
-      const isAdmin = isLoopback(req) || (user && config.adminEmails.includes(user.email));
-      if (!isAdmin) return json(res, 403, { error: 'forbidden' });
+      if (!(await isAdmin(req))) return json(res, 403, { error: 'forbidden' });
 
       if (req.method === 'GET') {
         return json(res, 200, { pending: await db.pendingUploads() });
@@ -469,15 +495,18 @@ const server = http.createServer(async (req, res) => {
       }
       const report = await db.addDmca({ clipId, reporter: b.reporter ?? 'anonymous', email, claim, ip: clientIp(req) });
       // Pull the clip off air immediately; review happens out of band.
-      const removed = await db.removeClip(clipId);
+      // Pull the clip off air but do NOT delete it: this endpoint is
+      // unauthenticated and clip ids are public, so a destructive action here
+      // would let anyone erase the channel, paid slots included.
+      const removed = await db.hideClip(clipId, `dmca:${report?.id ?? 'report'}`);
       console.log(`[dmca] report ${report.id} for clip ${clipId} (removed: ${removed})`);
       return json(res, 201, { reportId: report.id, removedFromAir: removed });
     }
 
-    // --- admin (loopback only) ---------------------------------------------
+    // --- admin (signed-in admin, ADMIN_TOKEN, or a genuinely local caller) --
 
     if (req.method === 'POST' && url.pathname === '/api/admin/batch') {
-      if (!isLoopback(req)) return json(res, 403, { error: 'forbidden' });
+      if (!(await isAdmin(req))) return json(res, 403, { error: 'forbidden' });
       const b = JSON.parse((await readBody(req)) || '{}');
       const count = Math.min(500, Math.max(1, Math.floor(Number(b.count) || 1)));
       return json(res, 202, { queued: count, remaining: requestBatch(count) });
