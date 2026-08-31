@@ -5,6 +5,8 @@ import { config } from './lib/config.js';
 import { store } from './lib/store.js';
 import { startScheduler, requestBatch, batchStatus, kickNow } from './lib/scheduler.js';
 import * as chat from './lib/chat.js';
+import * as auction from './lib/auction.js';
+import * as playout from './lib/playout.js';
 import { startFreeFeed } from './lib/freefeed.js';
 import { activeBackend, transcodeUpload } from './lib/generate.js';
 import os from 'node:os';
@@ -104,6 +106,21 @@ function publicClip(c) {
   };
 }
 
+// Live viewer presence. /api/now is polled by every open player, so it doubles
+// as a heartbeat; entries expire after viewerTtlSec.
+const viewers = new Map(); // key -> lastSeen ms
+
+function markViewer(req) {
+  const key = cookies(req).ic_session || cookies(req).ic_guest || clientIp(req);
+  viewers.set(key, Date.now());
+}
+
+function viewerCount() {
+  const cutoff = Date.now() - config.viewerTtlSec * 1000;
+  for (const [k, t] of viewers) if (t < cutoff) viewers.delete(k);
+  return viewers.size;
+}
+
 const isLoopback = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
 
 const EMAIL_RE = /^[^@\s]+@[^@\s.]+\.[^@\s]+$/;
@@ -115,10 +132,21 @@ const server = http.createServer(async (req, res) => {
     // --- broadcast ---------------------------------------------------------
 
     if (req.method === 'GET' && url.pathname === '/api/now') {
-      const now = store.nowPlaying();
+      markViewer(req);
+      const now = playout.nowPlaying();
       return json(res, 200, {
+        viewers: viewerCount(),
         now: now ? { clip: publicClip(now.clip), offset: Math.round(now.offset * 10) / 10 } : null,
+        upNext: playout.upNext(3).map((u) => ({ clip: publicClip(u.clip), startsAt: u.startsAt, paid: u.priority })),
         serverTime: Date.now(),
+      });
+    }
+
+    // DVR: the last N clips in broadcast order so a viewer can rewind
+    if (req.method === 'GET' && url.pathname === '/api/recent') {
+      const n = Math.min(30, Math.max(1, parseInt(url.searchParams.get('n') ?? '12', 10)));
+      return json(res, 200, {
+        clips: playout.history(n).map((h) => ({ ...publicClip(h.clip), airedAt: h.startedAt, paid: h.priority })),
       });
     }
 
@@ -133,7 +161,7 @@ const server = http.createServer(async (req, res) => {
         stats: s.stats,
         nextSlot: pending[0] ? publicBid(pending[0]) : null,
         pendingBids: pending.slice(0, 20).map(publicBid),
-        recentClips: s.clips.slice(-12).reverse().map(publicClip),
+        recentClips: playout.history(12).map((h) => ({ ...publicClip(h.clip), airedAt: h.startedAt, paid: h.priority })),
         genIntervalSec: config.genIntervalSec,
         genres: GENRES.map((g) => ({ key: g.key, label: g.label })),
         packs: config.creditPacks,
@@ -143,6 +171,8 @@ const server = http.createServer(async (req, res) => {
         myBids: user ? s.bids.filter((b) => b.userId === user.id).slice(-10).reverse().map(publicBid) : [],
         ledger: user ? store.ledgerFor(user.id, 10) : [],
         // pricing + uploads
+        auction: auction.status(),
+        viewers: viewerCount(),
         pricing: priceTable(),
         uploadCost: config.uploadCostCredits,
         maxUploadSec: config.maxUploadSec,
@@ -259,9 +289,9 @@ const server = http.createServer(async (req, res) => {
       }
       const name = ad?.brand || user.email.split('@')[0];
       const bid = store.addBid({ userId: user.id, name, idea, amount, genre, kind, ad, durationSec });
-      chat.systemMessage(`${name} bought the next slot for ${amount}cr — "${idea.slice(0, 80)}"`);
-      kickNow(); // don't make a paying bidder wait for the idle timer
-      return json(res, 201, { bid: publicBid(bid), credits: store.findUser(user.id).credits });
+      const a = auction.noteBid();
+      chat.systemMessage(`${name} bid ${amount}cr — "${idea.slice(0, 80)}"`);
+      return json(res, 201, { bid: publicBid(bid), credits: store.findUser(user.id).credits, auction: auction.status() });
     }
 
     // --- live chat ---------------------------------------------------------

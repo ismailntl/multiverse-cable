@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Block commits containing anything that looks like a live credential.
+# Install once: git config core.hooksPath .githooks
+patterns='sk_live_[A-Za-z0-9]{10}|sk_test_[A-Za-z0-9]{10}|rk_live_[A-Za-z0-9]{10}|hf_[A-Za-z0-9]{20}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA|OPENSSH|EC) PRIVATE KEY-----|eyJhbGciOi[A-Za-z0-9_-]{20}'
+if git diff --cached -U0 | grep -nE "$patterns"; then
+  echo
+  echo "pre-commit: refusing — that looks like a real credential."
+  echo "Put it in .env (gitignored) and reference it from .env.example instead."
+  exit 1
+fi
+if git diff --cached --name-only | grep -qxE '\.env|.*/\.env'; then
+  echo "pre-commit: refusing to commit a .env file."
+  exit 1
+fi

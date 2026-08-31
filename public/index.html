@@ -69,14 +69,28 @@
     filter: contrast(1.7); animation: flick .08s steps(2) infinite; }
   @keyframes flick { to { transform: translateY(2px) } }
   .tv.tuning .static { display: block; }
+  .tvtop { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; align-items: center;
+           flex-wrap: wrap; max-width: 62%; }
   .badge {
-    position: absolute; top: 12px; left: 12px; font-family: var(--mono); font-size: 12px;
+    font-family: var(--mono); font-size: 12px;
     letter-spacing: 1.5px; background: #c0182d; color: #fff; padding: 5px 10px;
-    border-radius: 4px; font-weight: 700;
+    border-radius: 4px; font-weight: 700; flex: 0 0 auto;
   }
   .badge.ad { background: var(--amber); color: #201400; }
   .badge.archive { background: #4a5568; color: #fff; }
   .badge.upload { background: var(--cyan); color: #04222b; }
+  .badge.rewind { background: var(--pink); color: #2a0020; }
+
+  /* live / rewind status + viewer count */
+  .livestat { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11.5px;
+    letter-spacing: 1px; color: #dbe4ef; background: #000000a6; -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px); border: 1px solid #ffffff26; border-radius: 999px; padding: 4px 10px;
+    white-space: nowrap; }
+  .livestat .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red);
+    box-shadow: 0 0 8px var(--red); animation: blip 2s ease-in-out infinite; flex: 0 0 auto; }
+  .livestat .vw { color: var(--dim); }
+  .livestat.rew { color: #ffd6f1; border-color: #ff5ec766; background: #2a0b2299; }
+  .livestat.rew .dot { background: var(--pink); box-shadow: 0 0 8px var(--pink); animation: none; }
   /* floating overlay layer: everything here sits ON TOP of the video */
   .tvui { position: absolute; inset: 0; pointer-events: none; transition: opacity .25s ease; }
   .tvui > * { pointer-events: auto; }
@@ -100,6 +114,17 @@
     overflow: hidden; white-space: nowrap; }
   .chyron-next .lbl { color: var(--pink); letter-spacing: 1.5px; flex: 0 0 auto; }
   .chyron-next .txt { overflow: hidden; text-overflow: ellipsis; }
+  /* compact auction clock riding on the picture (visible in cinema + fullscreen) */
+  .chyron-auc { font-size: 12.5px; display: flex; gap: 8px; align-items: baseline;
+    overflow: hidden; white-space: nowrap; color: #c6d0dd; }
+  .chyron-auc .lbl { color: var(--cyan); letter-spacing: 1.5px; flex: 0 0 auto; }
+  .chyron-auc .clk { color: var(--green); font-weight: 700; flex: 0 0 auto;
+                     font-variant-numeric: tabular-nums; }
+  .chyron-auc .txt { overflow: hidden; text-overflow: ellipsis; color: #c6d0dd; }
+  .chyron-auc.urgent .clk, .chyron-auc.urgent .lbl { color: var(--pink); }
+  .chyron-auc.urgent .clk { animation: tick 1s steps(2) infinite; }
+  .chyron-auc.closed .clk { color: var(--amber); }
+  @keyframes tick { 50% { opacity: .35; } }
   .tvbtns { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; flex-wrap: wrap;
             justify-content: flex-end; }
   .tvbtns button { background: #000a; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
@@ -144,7 +169,7 @@
   #tv:fullscreen .chyron { padding: 56px 26px 20px; font-size: 16px; }
   #tv:fullscreen .chyron-next { font-size: 14px; }
   #tv:fullscreen .tvbtns { top: 18px; right: 18px; }
-  #tv:fullscreen .badge { top: 18px; left: 18px; }
+  #tv:fullscreen .tvtop { top: 18px; left: 18px; }
 
   /* ---------- chat ---------- */
   .chatcol { min-width: 0; display: flex; }
@@ -164,6 +189,9 @@
   .cmsg { word-wrap: break-word; overflow-wrap: anywhere; }
   .cmsg .cname { color: var(--cyan); font-weight: 600; }
   .cmsg .ctext { color: var(--text); }
+  /* guests chat too — their handle reads as machine-issued, not chosen */
+  .cmsg.guest .cname { color: var(--faint); font-weight: 500; font-family: var(--mono);
+                       font-size: 12.5px; }
   .cmsg.sys { color: var(--faint); font-family: var(--mono); font-size: 12px; letter-spacing: .3px;
     border-left: 2px solid #2b3547; padding-left: 8px; }
   .cmsg.sys .ctext { color: var(--faint); }
@@ -182,6 +210,67 @@
   .chatmeta .ccount { font-family: var(--mono); font-size: 11.5px; color: var(--faint); flex: 0 0 auto; }
   .chatmeta .ccount.over { color: var(--red); }
   .chatmeta .msg { font-size: 12.5px; }
+  .guestnote { font-size: 12px; color: var(--faint); line-height: 1.45; margin: 0 0 7px; }
+  .guestnote b { color: var(--dim); font-weight: 600; }
+  .guestnote button { font-size: 12px; }
+
+  /* ---------- DVR rewind strip ---------- */
+  .dvr { margin-top: 12px; background: var(--panel); border: 1px solid var(--line);
+         border-radius: var(--r); padding: 12px 14px; }
+  .dvrhead { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap;
+             justify-content: space-between; }
+  .dvrhead h2 { margin: 0; font-size: 12px; letter-spacing: 1.6px; color: var(--amber);
+                text-transform: uppercase; font-weight: 700; }
+  .dvrhead .sub { color: var(--dim); font-size: 12.5px; }
+  .dvrlive { background: var(--panel-2); border: 1px solid var(--line); color: var(--dim);
+    border-radius: 999px; padding: 6px 13px; cursor: pointer; font-family: var(--ui);
+    font-size: 13px; font-weight: 600; flex: 0 0 auto; }
+  .dvrlive:hover { border-color: var(--green); color: var(--green); }
+  .dvrlive.on { border-color: var(--pink); color: var(--pink); background: #22091b; }
+  .dvrstrip { display: flex; gap: 8px; overflow-x: auto; padding: 12px 2px 4px; margin-top: 2px;
+              scrollbar-width: thin; overscroll-behavior-x: contain; }
+  .dvrstrip .empty { color: var(--dim); font-size: 13px; padding: 4px 0; }
+  .clipchip { flex: 0 0 auto; width: 152px; text-align: left; background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; cursor: pointer;
+    color: var(--text); font-family: var(--ui); display: grid; gap: 3px; }
+  .clipchip:hover { border-color: var(--cyan); }
+  .clipchip.on { border-color: var(--pink); background: #1b0f19; }
+  .clipchip .cch { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--amber); }
+  .clipchip .ctitle { font-size: 12.5px; line-height: 1.35; color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .clipchip .cmeta { font-family: var(--mono); font-size: 10.5px; color: var(--faint); letter-spacing: .5px; }
+  .clipchip.now { border-color: var(--green); }
+  .clipchip.now .cmeta { color: var(--green); }
+
+  /* ---------- auction clock ---------- */
+  .auction { background: #0c121c; border: 1px solid var(--line-soft); border-left: 3px solid var(--cyan);
+             border-radius: 8px; padding: 12px; display: grid; gap: 8px; }
+  .auction.urgent { border-left-color: var(--pink); background: #170b13; }
+  .auction.idle { border-left-color: #37415a; }
+  .auction.closed { border-left-color: var(--amber); }
+  .aucclock { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .aucclock .num { font-family: var(--mono); font-size: 30px; font-weight: 700; line-height: 1;
+    color: var(--green); font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+  .auction.urgent .aucclock .num { color: var(--pink); animation: throb .9s ease-in-out infinite; }
+  .auction.closed .aucclock .num { color: var(--amber); font-size: 17px; }
+  .auction.idle .aucclock .num { color: var(--dim); font-size: 17px; }
+  @keyframes throb { 50% { opacity: .45; transform: scale(1.06); } }
+  .aucclock .cap { font-family: var(--mono); font-size: 11px; letter-spacing: 1.4px;
+                   text-transform: uppercase; color: var(--dim); }
+  .aucbar { height: 4px; border-radius: 4px; background: #1a2130; overflow: hidden; }
+  .aucbar > i { display: block; height: 100%; border-radius: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--green), var(--cyan)); transition: width .95s linear; }
+  .auction.urgent .aucbar > i { background: linear-gradient(90deg, var(--pink), var(--amber)); }
+  .aucleader { font-size: 13px; color: var(--dim); line-height: 1.5; }
+  .aucleader .nm { color: var(--amber); }
+  .aucleader .amt { color: var(--green); font-family: var(--mono); }
+  .aucleader .idea { color: var(--text); }
+  .aucbeat { font-size: 13px; color: var(--text); }
+  .aucbeat b { color: var(--green); font-family: var(--mono); }
+  .aucqueue { font-size: 12px; color: var(--faint); line-height: 1.45; }
+  .aucqueue b { color: var(--dim); }
+  .auction + .tabs { margin-top: 14px; }
+  .msg:empty, .aucbeat:empty, .aucqueue:empty { display: none; }
 
   /* ---------- keyboard hint ---------- */
   .kbdhint { display: flex; align-items: center; gap: 10px; justify-content: space-between;
@@ -398,8 +487,14 @@
           <div class="scanlines"></div>
           <div class="static"></div>
           <div class="tvui" id="tvui">
-            <div class="badge" id="badge">● LIVE</div>
+            <div class="tvtop">
+              <div class="badge" id="badge">● LIVE</div>
+              <div class="livestat" id="liveStat" aria-live="polite">
+                <span class="dot"></span><span id="liveLabel">LIVE</span><span class="vw" id="viewerCount"></span>
+              </div>
+            </div>
             <div class="tvbtns">
+              <button type="button" id="backLiveTv" title="return to the live broadcast" style="display:none">▶ back to live</button>
               <button type="button" id="muteBtn">🔇 unmute</button>
               <button type="button" id="cinemaBtn" aria-pressed="false" title="hide the side panels (c)">▭ cinema</button>
               <button type="button" id="fsBtn" aria-pressed="false" title="fullscreen (f)">⛶ fullscreen</button>
@@ -412,6 +507,7 @@
                 <span class="credit" id="credit"></span>
               </div>
               <div class="chyron-next"><span class="lbl">NEXT</span><span class="txt" id="nextLine">open slot — highest bid programs it</span></div>
+              <div class="chyron-auc" id="tvAuction"><span class="lbl">AUCTION</span><span class="clk" id="tvAucClock">--:--</span><span class="txt" id="tvAucText">no auction running</span></div>
             </div>
           </div>
         </div>
@@ -421,8 +517,9 @@
             <div class="chathead"><span class="dot"></span> Live chat</div>
             <div class="chatlist" id="chatList" aria-live="polite"></div>
             <div class="chatfoot">
-              <div class="chatnote" id="chatOut">Connecting to the chat relay…</div>
-              <form id="chatForm" onsubmit="return false" style="display:none">
+              <div class="chatnote" id="chatOut" style="display:none">Connecting to the chat relay…</div>
+              <form id="chatForm" onsubmit="return false">
+                <p class="guestnote" id="chatGuest" style="display:none"></p>
                 <div class="chatinput">
                   <input id="chatText" maxlength="240" autocomplete="off" placeholder="say something to the multiverse">
                   <button type="button" id="chatSend">Send</button>
@@ -434,8 +531,19 @@
         </aside>
       </div>
 
+      <div class="dvr" id="dvr">
+        <div class="dvrhead">
+          <div>
+            <h2>⏪ Rewind</h2>
+            <span class="sub" id="dvrSub">Pick a clip that already aired — the broadcast keeps running without you.</span>
+          </div>
+          <button type="button" class="dvrlive" id="backLive" title="return to the synced live broadcast">▶ back to live</button>
+        </div>
+        <div class="dvrstrip" id="dvrStrip"><span class="empty">Loading the last few clips…</span></div>
+      </div>
+
       <div class="kbdhint" id="kbdHint">
-        <span><kbd>F</kbd> fullscreen · <kbd>M</kbd> mute · <kbd>C</kbd> cinema mode</span>
+        <span><kbd>F</kbd> fullscreen · <kbd>M</kbd> mute · <kbd>C</kbd> cinema mode · <kbd>←</kbd> rewind · <kbd>→</kbd> forward / live</span>
         <button type="button" class="x" id="kbdHintX" aria-label="Dismiss shortcut hint" title="Dismiss">×</button>
       </div>
 
@@ -486,7 +594,17 @@
       <!-- bidding -->
       <div class="panel">
         <h2>Bid for the next slot</h2>
-        <p class="hint">Highest bid programs whatever airs next.</p>
+        <p class="hint">Bids collect for a short window — the highest bid when the clock hits zero programs the next slot.</p>
+        <div class="auction idle" id="auctionBox">
+          <div class="aucclock">
+            <span class="num" id="aucClock">--:--</span>
+            <span class="cap" id="aucCap">bidding window</span>
+          </div>
+          <div class="aucbar"><i id="aucBar"></i></div>
+          <div class="aucleader" id="aucLeader">No bids yet — the machine picks a random dimension.</div>
+          <div class="aucbeat" id="aucBeat"></div>
+          <div class="aucqueue" id="aucQueue"></div>
+        </div>
         <div class="tabs">
           <button type="button" id="tabShow" class="on">📺 Show</button>
           <button type="button" id="tabAd">📣 Ad</button>
@@ -693,10 +811,26 @@ $('gateYes').onclick = () => {
 $('gateNo').onclick = () => { location.href = 'https://www.google.com'; };
 
 // ---- the broadcast ----
+let liveClipId = null, serverSkew = 0;
+
+function clipCredit(c) {
+  return c.source === 'ad' ? `paid slot · ${c.bidder}`
+    : c.source === 'bid' ? `programmed by ${c.bidder} · ${c.amount}cr`
+    : c.source === 'upload' ? `uploaded by ${c.bidder || 'a viewer'}`
+    : c.source === 'archive' ? 'public domain archives' : 'auto-transmission';
+}
+
 async function tune(force = false) {
   try {
-    const { now } = await api('/api/now');
+    const b0 = await api('/api/now');
+    const now = b0.now;
+    setViewers(b0.viewers);
+    if (typeof b0.serverTime === 'number') serverSkew = b0.serverTime - Date.now();
     if (!now) { setTimeout(() => tune(), 3000); return; }
+    liveClipId = now.clip.id;
+    // rewinding: keep polling so the live pointer + viewer count stay fresh,
+    // but do not yank the player back mid-clip
+    if (dvr.active) { renderStrip(); return; }
     if (!force && now.clip.id === currentClipId) return;
     currentClipId = now.clip.id;
     tv.classList.add('tuning');
@@ -710,20 +844,223 @@ async function tune(force = false) {
       : src === 'archive' ? '▣ FOUND FOOTAGE'
       : src === 'upload' ? '▲ VIEWER UPLOAD'
       : '● LIVE';
-    $('credit').textContent =
-      src === 'ad' ? `paid slot · ${now.clip.bidder}` :
-      src === 'bid' ? `programmed by ${now.clip.bidder} · ${now.clip.amount}cr` :
-      src === 'upload' ? `uploaded by ${now.clip.bidder || 'a viewer'}` :
-      src === 'archive' ? 'public domain archives' : 'auto-transmission';
+    $('credit').textContent = clipCredit(now.clip);
 
     player.src = '/videos/' + now.clip.file;
     player.currentTime = Math.max(0, now.offset);
     await player.play().catch(() => {});
     setTimeout(() => tv.classList.remove('tuning'), 350);
+    renderStrip();
   } catch { setTimeout(() => tune(true), 3000); }
 }
-player.addEventListener('ended', () => tune(true));
-player.addEventListener('error', () => setTimeout(() => tune(true), 2000));
+player.addEventListener('ended', () => { if (dvr.active) dvrNext(); else tune(true); });
+player.addEventListener('error', () => {
+  if (dvr.active) { toast('That clip would not play — back to live.', 'err'); backToLive(); return; }
+  setTimeout(() => tune(true), 2000);
+});
+
+/* ---------------------------------------------------------------
+   DVR — rewind a few clips, then resync to live
+   --------------------------------------------------------------- */
+const dvr = { active: false, clips: [], index: -1, endpointOk: false };
+let viewers = null;
+
+function viewerText(n) {
+  if (n == null) return '';
+  return ' · ' + (n === 0 ? 'nobody watching' : n === 1 ? '1 person watching' : n + ' watching');
+}
+function setViewers(n) {
+  const v = Number(n);
+  if (n == null || !Number.isFinite(v)) return;
+  viewers = v;
+  renderLiveStat();
+}
+function renderLiveStat() {
+  $('liveStat').classList.toggle('rew', dvr.active);
+  $('liveLabel').textContent = dvr.active ? '⏪ REWIND' : '● LIVE';
+  $('viewerCount').textContent = viewerText(viewers);
+}
+
+function sourceTag(c) {
+  return c.source === 'ad' ? '📣 ad'
+    : c.source === 'bid' ? '📺 ' + (c.bidder || 'bid')
+    : c.source === 'upload' ? '▲ ' + (c.bidder || 'viewer')
+    : c.source === 'archive' ? '▣ archive' : 'auto';
+}
+function renderStrip() {
+  const strip = $('dvrStrip');
+  if (!dvr.clips.length) {
+    strip.innerHTML = '<span class="empty">Nothing has aired yet — sit tight.</span>';
+    return;
+  }
+  strip.innerHTML = dvr.clips.map((c, i) => {
+    const onAir = !dvr.active && c.id === liveClipId;
+    return `<button type="button" class="clipchip${dvr.active && i === dvr.index ? ' on' : ''}${onAir ? ' now' : ''}" data-i="${i}">` +
+      `<span class="cch">CH ${esc(String(c.channel))}</span>` +
+      `<span class="ctitle">${esc(c.title || 'untitled')}</span>` +
+      `<span class="cmeta">${onAir ? '● on air' : dvr.active && i === dvr.index ? '⏪ rewinding' : esc(sourceTag(c))}</span>` +
+      `</button>`;
+  }).join('');
+  for (const b of strip.querySelectorAll('.clipchip')) {
+    b.onclick = () => playRewind(Number(b.dataset.i));
+  }
+}
+async function loadRecent() {
+  try {
+    const b = await api('/api/recent?n=12');
+    if (!Array.isArray(b.clips)) return;
+    dvr.endpointOk = true;
+    dvr.clips = b.clips;
+    if (dvr.active) {                       // keep pointing at the same clip as the list shifts
+      const i = dvr.clips.findIndex(c => c.id === currentClipId);
+      if (i >= 0) dvr.index = i;
+    }
+    renderStrip();
+    updateDvrUi();
+  } catch {}
+}
+
+function updateDvrUi() {
+  const on = dvr.active;
+  const btn = $('backLive');
+  btn.classList.toggle('on', on);
+  btn.disabled = !on;
+  btn.textContent = on ? '▶ back to live' : '● you are live';
+  $('backLiveTv').style.display = on ? '' : 'none';
+  $('dvrSub').textContent = on
+    ? `⏪ REWIND — clip ${dvr.index + 1} of ${dvr.clips.length}. The live broadcast keeps running without you.`
+    : 'Pick a clip that already aired — you can jump back to live any time.';
+  renderLiveStat();
+}
+
+function playRewind(i) {
+  const c = dvr.clips[i];
+  if (!c) return;
+  dvr.active = true;
+  dvr.index = i;
+  currentClipId = c.id;
+  tv.classList.add('tuning');
+  $('ch').textContent = 'CH ' + c.channel;
+  $('title').textContent = (c.title || '').toUpperCase();
+  const b = $('badge');
+  b.className = 'badge rewind';
+  b.textContent = '⏪ REWIND';
+  $('credit').textContent = clipCredit(c);
+  player.src = '/videos/' + c.file;
+  try { player.currentTime = 0; } catch {}
+  player.play().catch(() => {});
+  setTimeout(() => tv.classList.remove('tuning'), 350);
+  updateDvrUi();
+  renderStrip();
+}
+function dvrPrev() {
+  if (!dvr.clips.length) { toast('No past clips to rewind to yet.'); return; }
+  let i;
+  if (dvr.active) i = dvr.index + 1;
+  else {
+    const k = dvr.clips.findIndex(c => c.id === liveClipId);
+    i = k >= 0 ? k + 1 : 0;
+  }
+  if (i >= dvr.clips.length) { toast('That is as far back as the DVR goes.'); return; }
+  playRewind(i);
+}
+function dvrNext() {
+  if (!dvr.active) { toast('Already watching live.'); return; }
+  if (dvr.index <= 0) { backToLive(); return; }
+  playRewind(dvr.index - 1);
+}
+function backToLive() {
+  const was = dvr.active;
+  dvr.active = false;
+  dvr.index = -1;
+  currentClipId = null;
+  updateDvrUi();
+  renderStrip();
+  if (was) toast('Back to the live broadcast.', 'ok');
+  tune(true);
+}
+$('backLive').onclick = backToLive;
+$('backLiveTv').onclick = backToLive;
+updateDvrUi();
+renderStrip();
+
+/* ---------------------------------------------------------------
+   auction clock — ticks locally, re-syncs on every /api/state poll
+   --------------------------------------------------------------- */
+const auc = { known: false, open: false, closesAt: null, windowSec: 45, queued: 0, toBeat: null, leader: null };
+
+function fmtClock(ms) {
+  const t = Math.max(0, Math.ceil(ms / 1000));
+  return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+}
+function aucMsLeft() {
+  if (!auc.open || auc.closesAt == null) return 0;
+  return auc.closesAt - Date.now();
+}
+function syncAuction(a) {
+  if (!a) return;
+  auc.known = true;
+  auc.open = !!a.open;
+  auc.windowSec = Number(a.windowSec) || auc.windowSec;
+  auc.queued = Number(a.queued) || 0;
+  auc.toBeat = a.toBeat == null ? null : Number(a.toBeat);
+  auc.leader = a.leader || null;
+  // closesAt is server-epoch; correct for clock skew measured against /api/now
+  auc.closesAt = a.closesAt != null ? Number(a.closesAt) - serverSkew
+    : a.msLeft != null ? Date.now() + Number(a.msLeft) : null;
+  renderAuction();
+}
+function renderAuction() {
+  const box = $('auctionBox'), tvA = $('tvAuction');
+  if (!auc.known) { box.style.display = 'none'; tvA.style.display = 'none'; return; }
+  box.style.display = 'grid'; tvA.style.display = 'flex';
+
+  const left = aucMsLeft();
+  const closed = auc.open && left <= 0;
+  const urgent = auc.open && left > 0 && left <= 10000;
+  box.className = 'auction' + (!auc.open ? ' idle' : closed ? ' closed' : urgent ? ' urgent' : '');
+  tvA.className = 'chyron-auc' + (!auc.open ? '' : closed ? ' closed' : urgent ? ' urgent' : '');
+
+  const lead = auc.leader;
+  const beat = auc.toBeat;
+  if (!auc.open) {
+    $('aucClock').textContent = 'no auction running';
+    $('aucCap').textContent = 'bid to start one';
+    $('aucBar').style.width = '0%';
+    $('tvAucClock').textContent = '—';
+    $('tvAucText').textContent = 'no auction running — bid to start one';
+  } else if (closed) {
+    $('aucClock').textContent = 'bidding closed';
+    $('aucCap').textContent = 'generating…';
+    $('aucBar').style.width = '100%';
+    $('tvAucClock').textContent = '0:00';
+    $('tvAucText').textContent = lead
+      ? `bidding closed — generating “${lead.idea}” for ${lead.name}…`
+      : 'bidding closed — generating…';
+  } else {
+    $('aucClock').textContent = fmtClock(left);
+    $('aucCap').textContent = urgent ? 'seconds left — bid now' : 'until this slot is decided';
+    $('aucBar').style.width = Math.max(0, Math.min(100, (left / (auc.windowSec * 1000)) * 100)) + '%';
+    $('tvAucClock').textContent = fmtClock(left);
+    $('tvAucText').textContent = lead
+      ? `${lead.name} leads at ${lead.amount}cr — ${beat}cr takes the slot`
+      : `open slot — ${beat}cr takes it`;
+  }
+
+  $('aucLeader').innerHTML = lead
+    ? `<span class="nm">${esc(lead.name)}</span> leads with <span class="amt">${esc(String(lead.amount))}cr</span>` +
+      (lead.kind === 'ad' ? ' · <b style="color:var(--amber)">PAID AD</b>' : '') +
+      (lead.durationSec ? ` · <span class="amt">${esc(String(lead.durationSec))}s</span>` : '') +
+      `<br><span class="idea">“${esc(lead.idea)}”</span>`
+    : 'No leader yet — the machine picks a random dimension if nobody bids.';
+  $('aucBeat').innerHTML = beat == null ? ''
+    : `Bid at least <b>${esc(String(beat))} credits</b> to take the slot.`;
+  $('aucQueue').innerHTML = auc.queued
+    ? `<b>${esc(String(auc.queued))} bid${auc.queued === 1 ? '' : 's'} queued</b> — a losing bid is not lost: it stays queued and competes for the following slots.`
+    : 'No bids queued — the first bid opens a window, and losing bids roll over to the following slots.';
+}
+renderAuction();
+setInterval(renderAuction, 1000);
 function toggleMute() {
   player.muted = !player.muted;
   $('muteBtn').textContent = player.muted ? '🔇 unmute' : '🔊 mute';
@@ -836,7 +1173,9 @@ try { setCinema(localStorage.getItem('mc_cinema') === '1', false); } catch { set
    live chat
    --------------------------------------------------------------- */
 const CHAT_MAX = 240;
-const chat = { lastId: '', seen: new Set(), available: true, signedIn: null, busy: false, skip: 0 };
+// `blocked` = the server actually answered 401. Guests can chat by default, so
+// we never hide the composer on a hunch — only when told to.
+const chat = { lastId: '', seen: new Set(), available: true, signedIn: null, busy: false, skip: 0, blocked: false };
 
 function chatNearBottom() {
   const l = $('chatList');
@@ -857,12 +1196,37 @@ function chatUnavailable() {
     $('chatList').innerHTML = '<div class="cmsg sys"><span class="ctext">chat unavailable</span></div>';
   }
 }
+// The server assigns signed-out visitors a stable guest-#### handle, so the
+// composer stays up for everyone. Signing in just swaps the handle for a name.
 function chatAuthState(signedIn) {
   if (!chat.available) return;
+  if (chat.blocked) {
+    if (!signedIn) return;           // server refuses guests — leave the sign-in prompt up
+    chat.blocked = false; chat.signedIn = null;
+  }
   if (chat.signedIn === signedIn) return;
   chat.signedIn = signedIn;
-  chatSetComposer(signedIn);
-  if (!signedIn) chatNote('<b style="color:var(--text)">Sign in to chat</b> — everyone here is watching the same broadcast.');
+  chatSetComposer(true);
+  const g = $('chatGuest');
+  if (signedIn) { g.style.display = 'none'; g.innerHTML = ''; }
+  else {
+    g.style.display = 'block';
+    g.innerHTML = 'chatting as a <b>guest</b> — ' +
+      '<button type="button" class="linkish" id="chatSignIn">sign in</button> to use your name.';
+    $('chatSignIn').onclick = () => {
+      if (isCinema()) setCinema(false);
+      $('acctPanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setAuthMode('login');
+      setTimeout(() => $('email').focus(), 260);
+    };
+  }
+}
+// Only reached when POST /api/chat actually answers 401.
+function chatBlocked(reason) {
+  chat.blocked = true;
+  chat.signedIn = null;
+  chatSetComposer(false);
+  chatNote('<b style="color:var(--text)">Sign in to chat</b> — ' + esc(reason || 'guest chat is switched off right now.'));
 }
 function chatAppend(messages) {
   const list = $('chatList');
@@ -873,7 +1237,7 @@ function chatAppend(messages) {
     chat.seen.add(m.id);
     chat.lastId = m.id;
     const row = document.createElement('div');
-    row.className = 'cmsg' + (m.system ? ' sys' : '');
+    row.className = 'cmsg' + (m.system ? ' sys' : m.guest ? ' guest' : '');
     // untrusted user input — always escaped
     row.innerHTML = m.system
       ? `<span class="ctext">${esc(m.text)}</span>`
@@ -925,7 +1289,7 @@ async function chatSend() {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
     });
     const b = await r.json().catch(() => ({}));
-    if (r.status === 401) { chat.signedIn = null; chatAuthState(false); m.className = 'msg err'; m.textContent = b.error || 'Sign in to chat.'; return; }
+    if (r.status === 401) { chatBlocked(b.error); toast(b.error || 'Sign in to chat.', 'err'); return; }
     if (!r.ok) { m.className = 'msg err'; m.textContent = b.error || ('HTTP ' + r.status); return; }
     inp.value = ''; chatCount();
     if (b.message) chatAppend([b.message]);
@@ -935,6 +1299,7 @@ async function chatSend() {
 }
 $('chatSend').onclick = chatSend;
 chatCount();
+chatAuthState(false);   // guests can chat — show the composer before /api/state answers
 chatPoll();
 setInterval(chatPoll, 3000);
 
