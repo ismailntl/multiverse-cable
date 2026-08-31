@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-FDXGTMD3QR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-FDXGTMD3QR');
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiverse Cable</title>
 <style>
@@ -55,11 +63,10 @@
   .acctbtn .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .acctbtn .cr { font-family: var(--mono); font-size: 12.5px; color: var(--green); flex: 0 0 auto; }
   .acctbtn .cr[hidden] { display: none; }
-  /* the account + upload panels are hosted inside the modal — shed the panel chrome */
-  #modalBody #acctPanel, #modalBody #uploadPanel {
+  /* the account panel is hosted inside the modal — shed the panel chrome */
+  #modalBody #acctPanel {
     background: none; border: 0; border-radius: 0; padding: 0; margin: 0; }
   #modalBody #acctTitle { display: none; }
-  #modalBody #uploadPanel { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
   .ticker {
     overflow: hidden; white-space: nowrap; border-top: 1px solid var(--line-soft);
     border-bottom: 1px solid var(--line-soft); margin: 10px 0 14px; padding: 6px 0;
@@ -76,7 +83,11 @@
   /* ---------- TV ---------- */
   .tv { position: relative; background: #000; border: 3px solid #222a38; border-radius: 14px; overflow: hidden;
         box-shadow: 0 0 40px #3dff8b18, inset 0 0 60px #000; }
-  .tv video { display: block; width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #000; }
+  /* The frame takes each clip's real aspect (--clipar). Archive reels are
+     often 4:3, and forcing them into a fixed 16/9 box left thick black bars
+     that made the picture look small. No cropping — the box changes, not the
+     image. */
+  .tv video { display: block; width: 100%; aspect-ratio: var(--clipar, 16/9); object-fit: contain; background: #000; }
   .tv .scanlines { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay; opacity: .35;
     background: repeating-linear-gradient(0deg, #000 0 1px, transparent 1px 3px); }
   .tv .static { position: absolute; inset: 0; display: none; pointer-events: none;
@@ -95,11 +106,10 @@
   .badge.ad { background: var(--amber); color: #201400; }
   .badge.archive { background: #4a5568; color: #fff; }
   .badge.upload { background: var(--cyan); color: #04222b; }
-  .badge.rewind { background: var(--pink); color: #2a0020; }
   /* machine-made clips get their own colour so provenance reads at a glance */
   .badge.ai { background: #7c4dff; color: #fff; }
 
-  /* live / rewind status + viewer count */
+  /* live status + viewer count */
   .livestat { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11.5px;
     letter-spacing: 1px; color: #dbe4ef; background: #000000a6; -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px); border: 1px solid #ffffff26; border-radius: 999px; padding: 4px 10px;
@@ -107,8 +117,6 @@
   .livestat .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red);
     box-shadow: 0 0 8px var(--red); animation: blip 2s ease-in-out infinite; flex: 0 0 auto; }
   .livestat .vw { color: var(--dim); }
-  .livestat.rew { color: #ffd6f1; border-color: #ff5ec766; background: #2a0b2299; }
-  .livestat.rew .dot { display: none; }
   /* floating overlay layer: everything here sits ON TOP of the video */
   .tvui { position: absolute; inset: 0; pointer-events: none; transition: opacity .25s ease; }
   .tvui > * { pointer-events: auto; }
@@ -117,8 +125,8 @@
   .tv.uihidden .tvui, .tv.uihidden .chatcol { opacity: 0; pointer-events: none; }
   .tv.uihidden { cursor: none; }
 
-  /* bottom stack: the game overlay sits directly on top of the chyron, so neither
-     needs a magic offset and neither can ever cover the middle of the picture */
+  /* bottom stack: the chyron is the only thing that rides the picture now —
+     Real-or-AI moved off the video entirely and lives under it */
   .tvbottom { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
               pointer-events: none; display: flex; flex-direction: column; align-items: flex-start; }
   .chyron { align-self: stretch; pointer-events: none; padding: 40px 14px 11px;
@@ -130,6 +138,7 @@
     min-width: 0; flex: 1 1 auto; }
   .chyron-main > .credit { flex: 0 0 auto; }
   .chyron .title { color: var(--green); font-weight: 700; letter-spacing: 1px; }
+  .chyron .title:not([hidden])::before { content: "\00a0\00a0"; }
   .chyron .ch { color: var(--amber); }
   .chyron .credit { color: #cbd5e1; font-size: 13px; white-space: nowrap; }
   .chyron-next { font-size: 12.5px; color: #c6d0dd; display: flex; gap: 8px; align-items: baseline;
@@ -158,14 +167,21 @@
 
   /* ---------- stage: TV + chat side by side ---------- */
   .stage { display: grid; grid-template-columns: minmax(0, 1fr) clamp(240px, 19vw, 300px);
-           gap: 14px; position: relative; align-items: stretch; }
-  .stage > .tv { min-width: 0; }
-  @media (max-width: 1040px) { .stage { grid-template-columns: 1fr; } }
+           grid-template-areas: "tv chat" "rai chat";
+           gap: 0 14px; position: relative; align-items: stretch; }
+  .stage > .tv { grid-area: tv; min-width: 0; }
+  .stage > .rai { grid-area: rai; min-width: 0; }
+  .stage > .chatcol { grid-area: chat; }
+  @media (max-width: 1040px) {
+    .stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "tv" "rai" "chat"; }
+    .stage > .chatcol { margin-top: 14px; }
+  }
 
   /* cinema mode: side panels vanish, TV takes the full container, chat floats over it */
   body.cinema .side { display: none; }
   body.cinema .layout { grid-template-columns: minmax(0, 1fr); }
-  body.cinema .stage { grid-template-columns: minmax(0, 1fr); }
+  body.cinema .stage { grid-template-columns: minmax(0, 1fr);
+                       grid-template-areas: "tv" "rai" "chat"; }
   body.cinema .chatcol, .tv > .chatcol {
     position: absolute; top: 0; right: 0; bottom: 0; width: min(330px, 36%);
     z-index: 6; padding: 10px; transition: opacity .25s ease;
@@ -205,7 +221,6 @@
   .tv.pfs #fsBtn { border-color: var(--green); color: var(--green); background: #04140acc; }
   .tv.pfs .chyron { padding: 40px calc(14px + env(safe-area-inset-right))
                           calc(11px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left)); }
-  .tv.pfs .gameover { margin-left: calc(12px + env(safe-area-inset-left)); }
   .tv.pfs.chatover .tvbtns { right: calc(min(330px, 36%) + 12px); }
   .tv.pfs.chatover .chyron { padding-right: calc(min(330px, 36%) + 24px); }
   @media (max-width: 760px) {
@@ -298,37 +313,6 @@
   .guestnote { font-size: 12px; color: var(--faint); line-height: 1.45; margin: 0 0 7px; }
   .guestnote b { color: var(--dim); font-weight: 600; }
   .guestnote button { font-size: 12px; }
-
-  /* ---------- DVR rewind strip ---------- */
-  .dvr { margin-top: 12px; background: var(--panel); border: 1px solid var(--line);
-         border-radius: var(--r); padding: 12px 14px; }
-  .dvrhead { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap;
-             justify-content: space-between; }
-  .dvrhead h2 { margin: 0; font-size: 12px; letter-spacing: 1.6px; color: var(--amber);
-                text-transform: uppercase; font-weight: 700; }
-  .dvrhead .sub { color: var(--dim); font-size: 12.5px; }
-  .dvrlive { background: var(--panel-2); border: 1px solid var(--line); color: var(--dim);
-    border-radius: 999px; padding: 6px 13px; cursor: pointer; font-family: var(--ui);
-    font-size: 13px; font-weight: 600; flex: 0 0 auto; }
-  .dvrlive:hover { border-color: var(--green); color: var(--green); }
-  .dvrlive.on { border-color: var(--pink); color: var(--pink); background: #22091b; }
-  .dvrlive[disabled] { opacity: .55; cursor: default; color: var(--faint); }
-  .dvrlive[disabled]:hover { border-color: var(--line); color: var(--faint); }
-  .dvrstrip { display: flex; gap: 8px; overflow-x: auto; padding: 12px 2px 4px; margin-top: 2px;
-              scrollbar-width: thin; overscroll-behavior-x: contain; }
-  .dvrstrip .empty { color: var(--dim); font-size: 13px; padding: 4px 0; }
-  .clipchip { flex: 0 0 auto; width: 152px; text-align: left; background: var(--panel-2);
-    border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; cursor: pointer;
-    color: var(--text); font-family: var(--ui); display: grid; gap: 3px;
-    align-content: start; overflow: hidden; }
-  .clipchip:hover { border-color: var(--cyan); }
-  .clipchip.on { border-color: var(--pink); background: #1b0f19; }
-  .clipchip .cch { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--amber); }
-  .clipchip .ctitle { font-size: 12.5px; line-height: 1.35; color: var(--text);
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .clipchip .cmeta { font-family: var(--mono); font-size: 10.5px; color: var(--faint); letter-spacing: .5px; }
-  .clipchip.now { border-color: var(--green); }
-  .clipchip.now .cmeta { color: var(--green); }
 
   /* ---------- auction clock ---------- */
   .auction { background: #0c121c; border: 1px solid var(--line-soft); border-left: 3px solid var(--cyan);
@@ -549,37 +533,37 @@
   .toast.err { border-left-color: var(--red); }
   @keyframes pop { from { opacity: 0; transform: translateY(8px); } }
 
-  /* ---------- "Real or AI?" game — a permanent overlay on the picture ---------- */
+  /* ---------- "Real or AI?" — a strip directly BELOW the picture ----------
+     It used to ride on the video and swallowed the frame on a phone. It is a
+     sibling of the player now: always on, never covering the picture. */
   /* quiz badge: stands in for the provenance badge only until the round resolves */
   .badge.quiz { background: #2b1d5e; color: #e7dfff; box-shadow: inset 0 0 0 1px #7c4dff; }
-  .gameover { pointer-events: auto; margin: 0 0 8px 12px; max-width: min(430px, calc(100% - 24px));
-    display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-    background: #05080cb3; -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
-    border: 1px solid #ffffff26; border-radius: 12px; padding: 6px 9px;
-    box-shadow: 0 8px 24px #0009; }
-  .goq { display: flex; align-items: center; gap: 8px; }
-  .golbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.4px; color: var(--amber);
-           white-space: nowrap; }
-  .gob { min-height: 44px; min-width: 58px; padding: 5px 13px; border-radius: 9px; cursor: pointer;
-    font-family: var(--ui); font-size: 14px; font-weight: 700; letter-spacing: 1px;
-    border: 1px solid #ffffff33; background: #0a0f18cc; color: var(--text); flex: 0 0 auto; }
+  .rai { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px;
+    /* Deliberately off-palette so the game reads as the interactive thing on
+       the page rather than another grey panel. */
+    background: linear-gradient(90deg, #2a1252 0%, #3b1a63 55%, #1d1140 100%);
+    border: 1px solid #7c4dff; border-top: 0;
+    box-shadow: inset 0 1px 0 #ffffff14, 0 0 18px #7c4dff2e;
+    border-radius: 0 0 12px 12px; padding: 8px 12px; }
+  .railbl { font-family: var(--mono); font-size: 11px; letter-spacing: 1.4px; color: #d7c6ff;
+            white-space: nowrap; flex: 0 0 auto; }
+  .gob { min-height: 44px; min-width: 66px; padding: 6px 16px; border-radius: 9px; cursor: pointer;
+    font-family: var(--ui); font-size: 15px; font-weight: 700; letter-spacing: 1px;
+    border: 1px solid #9b7bff; background: #ffffff12; color: #fff; flex: 0 0 auto; }
   .gob.real:hover:not([disabled]) { border-color: var(--cyan); color: var(--cyan); }
   .gob.ai:hover:not([disabled]) { border-color: #a98bff; color: #c9b6ff; }
-  .gob[disabled] { opacity: .4; cursor: default; }
-  .gob.picked { border-color: var(--amber); color: var(--amber); opacity: .85; }
-  .goline { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap;
-            font-family: var(--mono); font-size: 11px; letter-spacing: .5px; }
-  .gores { color: #cbd5e1; }
+  .gob[disabled] { opacity: .45; cursor: default; }
+  .gob.picked { border-color: var(--amber); color: var(--amber); opacity: .9; }
+  .gores { font-family: var(--mono); font-size: 11.5px; letter-spacing: .4px; color: #cbd5e1;
+           min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .gores.ok { color: var(--green); } .gores.bad { color: var(--red); }
   .gores:empty { display: none; }
-  .gosc { color: var(--faint); white-space: nowrap; }
-  /* the panel keeps the running score, the legal note and the reset — never a switch */
-  .gamescore { font-family: var(--mono); font-size: 12.5px; color: var(--dim);
-               display: flex; flex-wrap: wrap; gap: 4px 14px; }
-  .gamescore b { color: var(--text); }
-  .gamefoot { display: flex; justify-content: space-between; align-items: center; gap: 10px;
-              margin-top: 10px; }
-  .gamefoot .legalnote { font-size: 12px; color: var(--faint); line-height: 1.45; }
+  .gosc { font-family: var(--mono); font-size: 11.5px; color: var(--faint); white-space: nowrap;
+          margin-left: auto; flex: 0 0 auto; }
+  .raireset { flex: 0 0 auto; background: none; border: 1px solid var(--line-soft); color: var(--faint);
+    border-radius: 7px; min-width: 30px; min-height: 30px; cursor: pointer; font-size: 14px;
+    line-height: 1; padding: 0 6px; }
+  .raireset:hover { color: var(--text); border-color: var(--line); }
 
   /* ---------- tap for sound ---------- */
   .unmutetap { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
@@ -604,9 +588,9 @@
     .wrap { max-width: none; margin: 0; padding: 0 0 calc(24px + env(safe-area-inset-bottom));
             display: flex; flex-direction: column; }
     header { order: 1; gap: 2px 10px;
-             padding: calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-left))
+             padding: calc(6px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-left))
                       2px calc(12px + env(safe-area-inset-right)); }
-    h1 { font-size: 17px; letter-spacing: 1.6px; }
+    h1 { font-size: 16px; letter-spacing: 1.4px; }
     header .sub { display: none; }
     .layout { order: 2; display: block;
               padding-left: calc(12px + env(safe-area-inset-left));
@@ -621,9 +605,16 @@
     .tv { border: 0; border-radius: 0; box-shadow: none;
           margin-left: calc(-12px - env(safe-area-inset-left));
           margin-right: calc(-12px - env(safe-area-inset-right)); }
+    /* the Real-or-AI strip is welded to the bottom of the picture */
+    .rai { border-left: 0; border-right: 0; border-radius: 0; padding: 6px 12px;
+           gap: 5px 8px;
+           margin-left: calc(-12px - env(safe-area-inset-left));
+           margin-right: calc(-12px - env(safe-area-inset-right)); }
+    .railbl { font-size: 10.5px; letter-spacing: 1.2px; }
+    .gores, .gosc { font-size: 11px; }
     /* typing: unpin the tab bar so nothing sits on the composer */
     body.kbdopen .mtabs { position: static; }
-    .tv video { width: 100%; aspect-ratio: 16 / 9; height: auto; object-fit: contain; background: #000; }
+    .tv video { width: 100%; aspect-ratio: var(--clipar, 16/9); height: auto; object-fit: contain; background: #000; }
     .tvtop { top: 8px; left: 8px; gap: 5px; max-width: calc(100% - 16px); }
     .badge { font-size: 10.5px; letter-spacing: 1px; padding: 4px 8px; overflow: hidden;
              text-overflow: ellipsis; white-space: nowrap; }
@@ -638,14 +629,14 @@
     .tv.chatover .chyron { padding-right: 10px; }
 
     /* --- control cluster moves below the picture at phone width --- */
-    /* the labelled unmute button sits right under the picture — the pill would
-       only land on the Real-or-AI overlay, so it is kept for fullscreen only */
+    /* the labelled unmute button sits right under the picture, so the pill on
+       the picture is kept for fullscreen only */
     body:not(.isfs) .tv.ismuted .unmutetap { display: none; }
-    #mobileControls { display: block; padding: 8px 0 9px; }
+    #mobileControls { display: block; padding: 7px 0; }
     #mobileControls .tvbtns { position: static; display: grid; gap: 8px;
                               grid-template-columns: repeat(4, minmax(0, 1fr)); }
     #cinemaBtn { display: none; }
-    #mobileControls .tvbtns button { min-height: 52px; padding: 6px 3px; font-size: 17px;
+    #mobileControls .tvbtns button { min-height: 46px; padding: 4px 3px; font-size: 16px;
       flex-direction: column; justify-content: center; gap: 1px; min-width: 0;
       background: var(--panel-2); backdrop-filter: none; -webkit-backdrop-filter: none;
       border: 1px solid var(--line); border-radius: 10px; }
@@ -665,18 +656,23 @@
       font-family: var(--ui); font-size: 14px; font-weight: 600; cursor: pointer; }
     .mtabs button.on { color: var(--green); border-bottom-color: var(--green); }
 
-    /* --- one tab at a time (scoped: body itself carries a data-mtab too) --- */
+    /* --- one tab at a time --- */
+    /* Scoped to .layout on purpose: <body> carries a data-mtab of its own, and
+       a bare [data-mtab] selector here once blanked the entire page. The video
+       and the Real-or-AI strip carry no data-mtab — they are never in a tab. */
     .layout [data-mtab] { display: none !important; }
-    body[data-mtab="watch"] .layout [data-mtab="watch"],
-    body[data-mtab="chat"] .layout [data-mtab="chat"],
-    body[data-mtab="bid"] .layout [data-mtab="bid"],
-    body[data-mtab="account"] .layout [data-mtab="account"] { display: block !important; }
-    body[data-mtab="chat"] .layout .chatcol[data-mtab="chat"] { display: flex !important; }
+    body[data-mtab="bid"] .layout [data-mtab~="bid"],
+    body[data-mtab="ad"] .layout [data-mtab~="ad"],
+    body[data-mtab="upload"] .layout [data-mtab~="upload"],
+    body[data-mtab="chat"] .layout [data-mtab~="chat"] { display: block !important; }
+    body[data-mtab="chat"] .layout .chatcol[data-mtab~="chat"] { display: flex !important; }
     /* chat rides along into fullscreen whichever tab is selected */
     .tv > .chatcol[data-mtab] { display: flex !important; }
+    /* the phone tab bar already picks show vs ad — the inner pair is redundant */
+    #bidKindTabs { display: none; }
 
-    .panel, .dvr { margin: 14px 0 0; padding: 14px; border-radius: 12px; }
-    .panel, .dvr, .chatcol, label.field, .check, input, textarea, select, button, h2 {
+    .panel { margin: 14px 0 0; padding: 14px; border-radius: 12px; }
+    .panel, .chatcol, label.field, .check, input, textarea, select, button, h2 {
       scroll-margin-top: 62px; scroll-margin-bottom: 24px; }
     .panel:last-child { margin-bottom: 0; }
     #kbdHint { display: none !important; }
@@ -686,7 +682,7 @@
 
     /* --- chat: bounded, scrolls on its own, composer pinned --- */
     .chatcol { margin-top: 14px; min-height: 240px; max-height: 70dvh;
-               height: var(--chath, calc(100dvh - var(--tvh, 56.25vw) - 200px)); }
+               height: var(--chath, calc(100dvh - var(--tvh, 56.25vw) - 240px)); }
     .chatbox { border-radius: 12px; }
     .chatlist { min-height: 0 !important; max-height: none !important; font-size: 14.5px; gap: 9px; }
     .chatfoot form { padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); }
@@ -700,19 +696,13 @@
     input[type="file"]::file-selector-button { font-size: 14px; padding: 10px 12px; }
     .check input { width: 22px; height: 22px; }
     .acctbtn { min-height: 44px; font-size: 14px; }
-    .tabs button, button.go, button.ghost, .packs button, .dvrlive, .mtabs button,
-    .gob, .clipchip, .chatinput button { min-height: 44px; }
+    .tabs button, button.go, button.ghost, .packs button, .mtabs button,
+    .gob, .chatinput button { min-height: 44px; }
     button.go { font-size: 16px; padding: 14px 16px; }
     button.ghost { font-size: 15px; padding: 12px 14px; }
     .tabs button { font-size: 15px; padding: 12px 8px; }
     .packs button { padding: 14px; }
-    .clipchip { width: 168px; padding: 11px 12px; }
-    .dvrstrip { padding: 12px 2px 6px; }
-    .gameover { margin: 0 0 6px 10px; padding: 5px 8px; gap: 3px;
-                max-width: min(360px, calc(100% - 20px)); }
-    .gob { min-width: 54px; padding: 4px 11px; font-size: 13.5px; }
-    .golbl { font-size: 10px; letter-spacing: 1.1px; }
-    .goline { font-size: 10.5px; }
+    .gob { min-width: 56px; padding: 4px 11px; font-size: 13.5px; }
     footer { font-size: 13px; }
     #toasts { left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom));
               max-width: none; }
@@ -728,7 +718,7 @@
      PHONE LANDSCAPE — near-fullscreen video with overlay chrome
      ========================================================= */
   @media (max-width: 950px) and (max-height: 500px) and (orientation: landscape) {
-    header, .ticker, footer, .dvr, .panel, .kbdhint, .mtabs, #mobileControls,
+    header, .ticker, footer, .rai, .panel, .kbdhint, .mtabs, #mobileControls,
     .layout > .chatcol, .stage > .chatcol { display: none !important; }
     .wrap { max-width: none; margin: 0; padding: 0; }
     .layout, .stage { grid-template-columns: 1fr; gap: 0; padding: 0; margin: 0; }
@@ -739,7 +729,6 @@
     .tvbtns button { min-height: 44px; min-width: 44px; justify-content: center; }
     .chyron { padding: 34px calc(14px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom))
                         calc(14px + env(safe-area-inset-left)); }
-    .gameover { margin-left: calc(12px + env(safe-area-inset-left)); }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -810,7 +799,6 @@
               </div>
             </div>
             <div class="tvbtns">
-              <button type="button" id="backLiveTv" title="return to the live broadcast" aria-label="back to live" style="display:none"><span class="ic" aria-hidden="true">▶</span><span class="tx">back to live</span></button>
               <button type="button" id="muteBtn" aria-label="unmute" title="unmute (m)"><span class="ic" aria-hidden="true">🔇</span><span class="tx">unmute</span></button>
               <button type="button" id="cinemaBtn" aria-pressed="false" aria-label="cinema mode" title="hide the side panels (c)"><span class="ic" aria-hidden="true">▭</span><span class="tx">cinema</span></button>
               <button type="button" id="fsBtn" aria-pressed="false" aria-label="fullscreen" title="fullscreen (f)"><span class="ic" aria-hidden="true">⛶</span><span class="tx">fullscreen</span></button>
@@ -819,20 +807,9 @@
             </div>
             <button type="button" class="unmutetap" id="unmuteTap" aria-label="tap for sound"><span aria-hidden="true">🔇</span><span>Tap for sound</span></button>
             <div class="tvbottom">
-              <div class="gameover" id="gameOver" role="group" aria-label="Real or AI?">
-                <div class="goq">
-                  <span class="golbl" id="goLbl">REAL OR AI?</span>
-                  <button type="button" class="gob real" id="voteReal" aria-label="vote real — genuine archival footage">REAL</button>
-                  <button type="button" class="gob ai" id="voteAi" aria-label="vote AI — machine-generated">AI</button>
-                </div>
-                <div class="goline">
-                  <span class="gores" id="goResult" aria-live="polite"></span>
-                  <span class="gosc" id="goScore"></span>
-                </div>
-              </div>
               <div class="chyron">
                 <div class="chyron-main">
-                  <span><span class="ch" id="ch">CH ---</span> &nbsp; <span class="title" id="title">TUNING…</span></span>
+                  <span><span class="ch" id="ch">CH ---</span><span class="title" id="title">TUNING…</span></span>
                   <span class="credit" id="credit"></span>
                 </div>
                 <div class="chyron-next"><span class="lbl">NEXT</span><span class="txt" id="nextLine">open slot — highest bid programs it</span></div>
@@ -840,6 +817,16 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Real or AI? — a sibling of the picture, never an overlay on it -->
+        <div class="rai" id="raiStrip" role="group" aria-label="Real or AI?">
+          <span class="railbl" id="goLbl">REAL OR AI?</span>
+          <button type="button" class="gob real" id="voteReal" aria-label="vote real — genuine archival footage">REAL</button>
+          <button type="button" class="gob ai" id="voteAi" aria-label="vote AI — machine-generated">AI</button>
+          <span class="gores" id="goResult" aria-live="polite"></span>
+          <span class="gosc" id="goScore"></span>
+          <button type="button" class="raireset" id="goReset" title="reset your Real or AI? score" aria-label="reset your Real or AI? score">↺</button>
         </div>
 
         <aside class="chatcol" id="chatDock" aria-label="Live chat" data-mtab="chat">
@@ -869,54 +856,25 @@
 
       <!-- phone only: sticky section tabs -->
       <nav class="mtabs" id="mtabs" role="tablist" aria-label="Sections">
-        <button type="button" role="tab" data-tab="watch" aria-selected="true" class="on">Watch</button>
-        <button type="button" role="tab" data-tab="bid" aria-selected="false">Bid</button>
+        <button type="button" role="tab" data-tab="bid" aria-selected="true" class="on">Bid</button>
+        <button type="button" role="tab" data-tab="ad" aria-selected="false">Ad</button>
+        <button type="button" role="tab" data-tab="upload" aria-selected="false">Upload</button>
         <button type="button" role="tab" data-tab="chat" aria-selected="false">Chat</button>
-        <button type="button" role="tab" data-tab="account" aria-selected="false">Account</button>
       </nav>
 
-      <div class="dvr" id="dvr" data-mtab="watch">
-        <div class="dvrhead">
-          <div>
-            <h2>⏪ Rewind</h2>
-            <span class="sub" id="dvrSub">Pick a clip that already aired — the broadcast keeps running without you.</span>
-          </div>
-          <button type="button" class="dvrlive" id="backLive" title="return to the synced live broadcast">▶ back to live</button>
-        </div>
-        <div class="dvrstrip" id="dvrStrip"><span class="empty">Loading the last few clips…</span></div>
-      </div>
-
-      <!-- ---------- Real or AI? — voting lives on the picture; this is the scoreboard ---------- -->
-      <div class="panel" id="gamePanel" data-mtab="watch" style="margin-top:14px">
-        <h2>🎭 Real or AI?</h2>
-        <p class="hint">This channel mixes machine-made clips with genuine public-domain archival
-          footage. Call every clip as it airs — the buttons are on the picture itself.</p>
-        <div class="gamescore" id="gameScore"></div>
-        <div class="gamefoot">
-          <span class="legalnote">Labels always come back — the moment you vote, and automatically
-            before the clip ends if you don't. Nothing AI-generated ever finishes unlabelled.</span>
-          <button type="button" class="linkish" id="gameReset">reset score</button>
-        </div>
-      </div>
-
       <div class="kbdhint" id="kbdHint">
-        <span><kbd>F</kbd> fullscreen · <kbd>M</kbd> mute · <kbd>C</kbd> cinema · <kbd>←</kbd> rewind · <kbd>→</kbd> forward / live · <kbd>R</kbd>/<kbd>A</kbd> real or AI</span>
+        <span><kbd>F</kbd> fullscreen · <kbd>M</kbd> mute · <kbd>C</kbd> cinema · <kbd>R</kbd>/<kbd>A</kbd> real or AI</span>
         <button type="button" class="x" id="kbdHintX" aria-label="Dismiss shortcut hint" title="Dismiss">×</button>
-      </div>
-
-      <div class="panel" data-mtab="watch" style="margin-top:14px">
-        <h2>Recently materialized</h2>
-        <ul class="list" id="recent"></ul>
       </div>
     </div>
 
     <div class="side">
 
 
-      <!-- bidding -->
-      <div class="panel" data-mtab="bid">
-        <h2>Bid for the next slot</h2>
-        <p class="hint">Bids collect for a short window — the highest bid when the clock hits zero programs the next slot.</p>
+      <!-- bidding: one form, two shapes — the phone tab bar picks which -->
+      <div class="panel" data-mtab="bid ad">
+        <h2 id="bidPanelTitle">Bid for the next slot</h2>
+        <p class="hint" id="bidPanelHint">Bids collect for a short window — the highest bid when the clock hits zero programs the next slot.</p>
         <div class="auction idle" id="auctionBox">
           <div class="aucclock">
             <span class="num" id="aucClock">--:--</span>
@@ -927,7 +885,7 @@
           <div class="aucbeat" id="aucBeat"></div>
           <div class="aucqueue" id="aucQueue"></div>
         </div>
-        <div class="tabs">
+        <div class="tabs" id="bidKindTabs">
           <button type="button" id="tabShow" class="on">📺 Show</button>
           <button type="button" id="tabAd">📣 Ad</button>
         </div>
@@ -961,32 +919,51 @@
         </form>
       </div>
 
-      <!-- phone: the Account tab is a door to the same modal the header button opens -->
-      <div class="panel" id="acctTab" data-mtab="account">
-        <h2>Your account</h2>
-        <p class="hint" id="acctTabHint">Sign in to bid, buy credits and upload your own clips.</p>
-        <button class="go" type="button" id="acctTabBtn">Open your account</button>
+      <!-- paid uploads are their own tab now, and never part of the sign-in modal -->
+      <div class="panel" id="uploadPanel" data-mtab="upload">
+        <h2>Upload your own clip</h2>
+        <p class="hint">Put your own footage on the channel — a paid slot.</p>
+        <div id="uploadOut" class="msg">Sign in to upload a clip —
+          <button type="button" class="linkish" id="uploadSignIn">sign in or create an account</button>.</div>
+        <div id="uploadIn" style="display:none">
+          <div class="costline" id="uploadCost"></div>
+          <form id="uploadForm" onsubmit="return false" style="margin-top:14px">
+            <label class="field">Video file
+              <input id="uploadFile" type="file" accept="video/mp4,video/webm,video/quicktime">
+            </label>
+            <label class="field">Clip title
+              <input id="uploadTitle" maxlength="60" placeholder="max 60 characters">
+            </label>
+            <div class="note">Uploads are <b>reviewed by a human before they air</b>. Nothing goes
+              out live the moment you upload it — you'll see the status below once it's decided.</div>
+            <button class="go" type="button" id="uploadBtn">Upload clip</button>
+            <div class="bar" id="uploadBar" style="display:none"><i></i></div>
+            <div class="msg" id="uploadMsg"></div>
+          </form>
+          <div id="myUploadsWrap" style="display:none;margin-top:18px">
+            <h2 style="margin-bottom:12px">Your uploads</h2>
+            <ul class="list" id="myUploads"></ul>
+          </div>
+        </div>
       </div>
 
-
-
-      <div class="panel" data-mtab="watch">
+      <div class="panel" data-mtab="bid ad">
         <h2>Next slot goes to</h2>
         <div class="nextslot" id="nextslot"><span class="empty">Nobody yet — the machine picks a random dimension.</span></div>
       </div>
 
-      <div class="panel" data-mtab="bid">
+      <div class="panel" data-mtab="bid ad">
         <h2>Bid board</h2>
         <ul class="list" id="bids"><li><span class="what muted">No pending bids.</span></li></ul>
       </div>
 
-      <div class="panel" data-mtab="account">
+      <div class="panel" data-mtab="upload">
         <h2>Transmission stats</h2>
         <div class="stats" id="stats">…</div>
       </div>
 
-      <!-- Account + upload live here only until the script parks them in a
-           detached host; they are shown inside the modal, never in the page. -->
+      <!-- The account panel lives here only until the script parks it in a
+           detached host; it is shown inside the modal, never in the page. -->
       <div id="acctHost">
       <div class="panel" id="acctPanel">
         <h2 id="acctTitle">Your account</h2>
@@ -1021,31 +998,6 @@
           <div class="packs" id="packs"></div>
           <div class="msg" id="buyMsg" style="margin-top:10px"></div>
           <button class="ghost" type="button" id="logoutBtn" style="margin-top:12px">Sign out</button>
-        </div>
-      </div>
-      <div class="panel" id="uploadPanel">
-        <h2>Upload your own clip</h2>
-        <p class="hint">Put your own footage on the channel — a paid slot.</p>
-        <div id="uploadOut" class="msg">Sign in above to upload a clip.</div>
-        <div id="uploadIn" style="display:none">
-          <div class="costline" id="uploadCost"></div>
-          <form id="uploadForm" onsubmit="return false" style="margin-top:14px">
-            <label class="field">Video file
-              <input id="uploadFile" type="file" accept="video/mp4,video/webm,video/quicktime">
-            </label>
-            <label class="field">Clip title
-              <input id="uploadTitle" maxlength="60" placeholder="max 60 characters">
-            </label>
-            <div class="note">Uploads are <b>reviewed by a human before they air</b>. Nothing goes
-              out live the moment you upload it — you'll see the status below once it's decided.</div>
-            <button class="go" type="button" id="uploadBtn">Upload clip</button>
-            <div class="bar" id="uploadBar" style="display:none"><i></i></div>
-            <div class="msg" id="uploadMsg"></div>
-          </form>
-          <div id="myUploadsWrap" style="display:none;margin-top:18px">
-            <h2 style="margin-bottom:12px">Your uploads</h2>
-            <ul class="list" id="myUploads"></ul>
-          </div>
         </div>
       </div>
       </div>
@@ -1088,6 +1040,10 @@ async function api(url, opts) {
   return b;
 }
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
+// Sections come and go (the rewind strip and the account tab are gone). A click
+// handler is only ever attached to a node that is really in the tree, so a stale
+// id can never blow up with "Cannot set properties of null".
+function on(id, fn) { const el = $(id); if (el) el.onclick = fn; return el; }
 const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(s || '').trim());
 
 // ---- toasts ----
@@ -1150,10 +1106,6 @@ function renderAcctBtn() {
   $('acctBtn').setAttribute('aria-label', u
     ? 'Your account — ' + u.email + ', ' + u.credits + ' credits'
     : 'Sign in or create an account');
-  $('acctTabHint').textContent = u
-    ? 'Buy credits, upload a clip, or sign out.'
-    : 'Sign in to bid, buy credits and upload your own clips.';
-  $('acctTabBtn').textContent = u ? 'Open your account' : 'Sign in or create an account';
   if (acctOpen) $('modalTitle').textContent = u ? 'Your account' : 'Sign in';
 }
 /**
@@ -1217,16 +1169,16 @@ function openModal(opts) {
   const first = Object.values(inputs)[0];
   setTimeout(() => (first ? first.focus() : cancel.focus()), 30);
 }
-$('modalOk').onclick = async () => {
+on('modalOk', async () => {
   if (!modalState) return;
   const values = {};
   for (const [k, el] of Object.entries(modalState.inputs)) values[k] = el.value.trim();
   try { await modalState.opts.onConfirm(values, modalState.ctx); }
   catch (e) { modalState.ctx.setBusy(false); modalState.ctx.setError('✗ ' + e.message); }
-};
-$('modalCancel').onclick = () => closeModal();
-$('acctBtn').onclick = openAccountModal;
-$('acctTabBtn').onclick = openAccountModal;
+});
+on('modalCancel', () => closeModal());
+on('acctBtn', openAccountModal);
+on('uploadSignIn', openAccountModal);
 $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) closeModal(); });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && $('modal').classList.contains('show')) closeModal();
@@ -1234,15 +1186,15 @@ document.addEventListener('keydown', (e) => {
 
 // ---- age gate (recorded locally; account signup records it server-side) ----
 if (!localStorage.getItem('ic_age_ok')) $('gate').classList.add('show');
-$('gateYes').onclick = () => {
+on('gateYes', () => {
   localStorage.setItem('ic_age_ok', new Date().toISOString());
   $('gate').classList.remove('show');
   player.play().catch(() => {});
-};
-$('gateNo').onclick = () => { location.href = 'https://www.google.com'; };
+});
+on('gateNo', () => { location.href = 'https://www.google.com'; });
 
 // ---- the broadcast ----
-let liveClipId = null, serverSkew = 0;
+let serverSkew = 0;
 
 // provenance, spelled out — the three kinds of content are never conflated
 function clipCredit(c) {
@@ -1270,7 +1222,7 @@ function clipSrc(c) { return (c && c.url) ? c.url : ('/videos/' + (c && c.file))
 
 /* ---------------------------------------------------------------
    "Real or AI?" — always on, played on the channel's own mix from
-   the overlay riding on the picture.
+   a strip that sits directly BELOW the picture (never on top of it).
    LEGAL: provenance labels are masked ONLY between a clip starting
    and the round resolving. A round always resolves to the truth —
    on the vote, at the clip's end, or on a 15s cap, whichever comes
@@ -1283,9 +1235,9 @@ const game = {
   timer: null,
   round: { clipId: null, truth: null, eligible: false, voted: null, correct: null, revealed: true },
   score: { correct: 0, total: 0, streak: 0, best: 0 },
-  played: new Map(),               // clipId -> {voted, correct} — a rewind never scores twice
+  played: new Map(),               // clipId -> {voted, correct} — a re-tune never scores twice
 };
-let curClip = null, curRewind = false;
+let curClip = null;
 
 // viewer uploads are neither machine-made nor archival — they sit the game out
 function gameTruth(c) {
@@ -1312,31 +1264,35 @@ function saveGame() {
   try { localStorage.setItem('mc_game_score', JSON.stringify(game.score)); } catch {}
 }
 
-// the single place the on-screen provenance chrome is written
+// the single place the on-screen provenance chrome is written.
+// The TITLE is provenance too — "1950s newsreel: Atom Age Farming" answers the
+// question on its own — so it stays hidden until the round resolves, leaving
+// the channel number as the only thing on the chyron.
 function renderProvenance() {
   const c = curClip;
   if (!c) return;
   const b = $('badge'), masked = gameMasking();
-  if (curRewind) {
-    b.className = 'badge rewind' + (masked ? ' quiz' : '');
-    const kind = masked ? '❓ REAL OR AI?' : clipKind(c);
-    b.textContent = '⏪ REWIND' + (kind ? ' · ' + kind : '');
-  } else if (masked) {
+  if (masked) {
+    // No badge while masked: the strip under the player already asks, and a
+    // second prompt on the picture just eats the frame.
     b.className = 'badge quiz';
-    b.textContent = '❓ REAL OR AI?';
+    b.textContent = '';
   } else {
     const tag = clipBadge(c);
     b.className = 'badge' + tag.cls;
     b.textContent = tag.text;
   }
   b.style.display = b.textContent ? '' : 'none';
-  $('credit').textContent = masked ? 'provenance hidden until you call it' : clipCredit(c);
+  const t = $('title');
+  t.hidden = masked;
+  t.textContent = masked ? '' : (c.title || '').toUpperCase();
+  $('credit').textContent = masked ? 'title + provenance hidden until you call it' : clipCredit(c);
 }
 
 // one round per clip — a forced re-tune to the same clip never re-opens it,
-// and a clip already called keeps its verdict when you rewind back to it
-function startRound(clip, rewind) {
-  curClip = clip; curRewind = !!rewind;
+// and a clip already called keeps its verdict if it comes round again
+function startRound(clip) {
+  curClip = clip;
   if (game.round.clipId === clip.id) { renderProvenance(); renderGame(); return; }
   // whatever was on screen is leaving — its provenance can never stay masked
   game.round.revealed = true;
@@ -1358,7 +1314,7 @@ function autoReveal() {
   if (game.round.clipId != null && !game.played.has(game.round.clipId)) {
     game.played.set(game.round.clipId, { voted: null, correct: null });
   }
-  renderProvenance(); renderStrip(); renderGame();
+  renderProvenance(); renderGame(); renderTicker();
 }
 function castVote(answer) {
   const r = game.round;
@@ -1376,51 +1332,44 @@ function castVote(answer) {
   game.played.set(r.clipId, { voted: r.voted, correct: r.correct });
   if (game.played.size > 200) game.played.delete(game.played.keys().next().value);
   saveGame();
-  renderProvenance(); renderStrip(); renderGame();
+  renderProvenance(); renderGame(); renderTicker();
   toast((r.correct ? '✓ Correct — ' : '✗ Not quite — ') + truthLabel(r.truth), r.correct ? 'ok' : 'err');
 }
 function renderGame() {
   const r = game.round;
   const canVote = r.eligible && !r.revealed;
 
-  // ---- overlay on the picture ----
+  // ---- the strip under the picture ----
   const vr = $('voteReal'), va = $('voteAi');
   vr.disabled = !canVote; va.disabled = !canVote;
   vr.classList.toggle('picked', r.voted === 'real');
   va.classList.toggle('picked', r.voted === 'ai');
-  $('gameOver').dataset.state = !r.clipId ? 'waiting' : !r.eligible ? 'out' : canVote ? 'open' : 'done';
-  $('goLbl').textContent = canVote ? 'REAL OR AI?' : !r.eligible ? 'REAL OR AI?' : 'CALLED';
+  $('raiStrip').dataset.state = !r.clipId ? 'waiting' : !r.eligible ? 'out' : canVote ? 'open' : 'done';
+  $('goLbl').textContent = !r.eligible || canVote ? 'REAL OR AI?' : 'CALLED';
 
   const res = $('goResult');
   res.className = 'gores';
+  // while the round is open the label is the prompt — the row stays one line
   if (!r.clipId) res.textContent = 'tuning in…';
-  else if (!r.eligible) res.textContent = 'viewer upload — sits this one out';
-  else if (canVote) res.textContent = 'call it before the clip ends';
+  else if (!r.eligible) res.textContent = 'viewer upload';
+  else if (canVote) res.textContent = '';
   else if (r.voted) {
     res.className = 'gores ' + (r.correct ? 'ok' : 'bad');
-    res.textContent = (r.correct ? '✓ correct — ' : '✗ wrong — ') + truthShort(r.truth);
+    res.textContent = (r.correct ? '✓ ' : '✗ ') + truthShort(r.truth);
   } else {
-    res.textContent = '⏱ revealed — ' + truthShort(r.truth);
+    res.textContent = '⏱ ' + truthShort(r.truth);
   }
 
   const s = game.score;
-  const acc = s.total ? Math.round((s.correct / s.total) * 100) : 0;
   $('goScore').textContent = `${s.correct}/${s.total} · streak ${s.streak}`;
-
-  // ---- scoreboard panel ----
-  $('gameScore').innerHTML =
-    `<span>score <b>${s.correct}/${s.total}</b></span>` +
-    `<span>accuracy <b>${acc}%</b></span>` +
-    `<span>streak <b>${s.streak}</b></span>` +
-    `<span>best <b>${s.best}</b></span>`;
 }
-$('voteReal').onclick = () => castVote('real');
-$('voteAi').onclick = () => castVote('ai');
-$('gameReset').onclick = () => {
+on('voteReal', () => castVote('real'));
+on('voteAi', () => castVote('ai'));
+on('goReset', () => {
   game.score = { correct: 0, total: 0, streak: 0, best: 0 };
   saveGame(); renderGame();
   toast('Real or AI? score reset.', 'ok');
-};
+});
 loadGame();
 renderGame();
 
@@ -1431,22 +1380,17 @@ async function tune(force = false) {
     setViewers(b0.viewers);
     if (typeof b0.serverTime === 'number') serverSkew = b0.serverTime - Date.now();
     if (!now) { setTimeout(() => tune(), 3000); return; }
-    liveClipId = now.clip.id;
-    // rewinding: keep polling so the live pointer + viewer count stay fresh,
-    // but do not yank the player back mid-clip
-    if (dvr.active) { renderStrip(); return; }
     if (!force && now.clip.id === currentClipId) return;
     currentClipId = now.clip.id;
     tv.classList.add('tuning');
     $('ch').textContent = 'CH ' + now.clip.channel;
-    $('title').textContent = (now.clip.title || '').toUpperCase();
-    startRound(now.clip, false);
+    // the title is written by renderProvenance — it is masked until the reveal
+    startRound(now.clip);
 
     player.src = clipSrc(now.clip);
     player.currentTime = Math.max(0, now.offset);
     await player.play().catch(() => {});
     setTimeout(() => tv.classList.remove('tuning'), 350);
-    renderStrip();
   } catch { setTimeout(() => tune(true), 3000); }
 }
 // LEGAL BACKSTOP: the label is back on screen before the clip runs out, always
@@ -1455,19 +1399,14 @@ player.addEventListener('timeupdate', () => {
   const d = player.duration;
   if (Number.isFinite(d) && d > 0 && d - player.currentTime <= GAME_END_LEAD_S) autoReveal();
 });
-player.addEventListener('ended', () => {
-  autoReveal();
-  if (dvr.active) dvrNext(); else tune(true);
-});
-player.addEventListener('error', () => {
-  if (dvr.active) { toast('That clip would not play — back to live.', 'err'); backToLive(); return; }
-  setTimeout(() => tune(true), 2000);
-});
+player.addEventListener('ended', () => { autoReveal(); tune(true); });
+player.addEventListener('error', () => { setTimeout(() => tune(true), 2000); });
 
 /* ---------------------------------------------------------------
-   DVR — rewind a few clips, then resync to live
+   live status line — the DVR rewind strip and its "recently
+   materialized" list are gone, so there is no non-live state left
+   and nothing polls /api/recent any more.
    --------------------------------------------------------------- */
-const dvr = { active: false, clips: [], index: -1, endpointOk: false };
 let viewers = null;
 
 function viewerText(n) {
@@ -1481,115 +1420,21 @@ function setViewers(n) {
   renderLiveStat();
 }
 function renderLiveStat() {
-  $('liveStat').classList.toggle('rew', dvr.active);
-  $('liveLabel').textContent = dvr.active ? '⏪ REWIND' : 'LIVE';   // the dot is the ● when live
+  $('liveLabel').textContent = 'LIVE';       // the dot is the ● when live
   $('viewerCount').textContent = viewerText(viewers);
 }
+renderLiveStat();
 
-function sourceTag(c) {
-  return c.source === 'ad' ? '📣 AI ad'
-    : c.source === 'bid' ? '◈ AI · ' + (c.bidder || 'bid')
-    : c.source === 'upload' ? '▲ ' + (c.bidder || 'viewer')
-    : c.source === 'archive' ? '' : '◈ AI';
+// The ticker lists what has aired — which would hand you the title of the clip
+// on screen while its round is still open, so that one line is held back.
+let tickerClips = [];
+function renderTicker() {
+  const rows = tickerClips
+    .filter(c => !(gameMasking() && c.id === currentClipId))
+    .map(c => `CH ${c.channel} — ${c.title}`);
+  $('tickerText').textContent = (rows.join('   ✦   ') || 'SIGNAL ACQUIRED') +
+    '   ✦   BID TO PROGRAM THE NEXT DIMENSION   ✦   AI-GENERATED + PUBLIC-DOMAIN ARCHIVE + VIEWER UPLOADS   ✦   18+ · AI CLIPS AIR WITH NO HUMAN PRE-REVIEW';
 }
-function renderStrip() {
-  const strip = $('dvrStrip');
-  if (!dvr.clips.length) {
-    strip.innerHTML = '<span class="empty">Nothing has aired yet — sit tight.</span>';
-    return;
-  }
-  strip.innerHTML = dvr.clips.map((c, i) => {
-    const onAir = !dvr.active && c.id === liveClipId;
-    // the chip for the clip on screen must not answer the quiz for you
-    const meta = onAir ? '● on air'
-      : dvr.active && i === dvr.index ? '⏪ rewinding'
-      : gameMasking() && c.id === currentClipId ? '❓ guess it'
-      : esc(sourceTag(c));
-    return `<button type="button" class="clipchip${dvr.active && i === dvr.index ? ' on' : ''}${onAir ? ' now' : ''}" data-i="${i}">` +
-      `<span class="cch">CH ${esc(String(c.channel))}</span>` +
-      `<span class="ctitle">${esc(c.title || 'untitled')}</span>` +
-      `<span class="cmeta">${meta}</span>` +
-      `</button>`;
-  }).join('');
-  for (const b of strip.querySelectorAll('.clipchip')) {
-    b.onclick = () => playRewind(Number(b.dataset.i));
-  }
-}
-async function loadRecent() {
-  try {
-    const b = await api('/api/recent?n=12');
-    if (!Array.isArray(b.clips)) return;
-    dvr.endpointOk = true;
-    dvr.clips = b.clips;
-    if (dvr.active) {                       // keep pointing at the same clip as the list shifts
-      const i = dvr.clips.findIndex(c => c.id === currentClipId);
-      if (i >= 0) dvr.index = i;
-    }
-    renderStrip();
-    updateDvrUi();
-  } catch {}
-}
-
-function updateDvrUi() {
-  const on = dvr.active;
-  const btn = $('backLive');
-  btn.classList.toggle('on', on);
-  btn.disabled = !on;
-  btn.textContent = on ? '▶ back to live' : '● you are live';
-  $('backLiveTv').style.display = on ? '' : 'none';
-  $('dvrSub').textContent = on
-    ? `⏪ REWIND — clip ${dvr.index + 1} of ${dvr.clips.length}. The live broadcast keeps running without you.`
-    : 'Pick a clip that already aired — you can jump back to live any time.';
-  renderLiveStat();
-}
-
-function playRewind(i) {
-  const c = dvr.clips[i];
-  if (!c) return;
-  dvr.active = true;
-  dvr.index = i;
-  currentClipId = c.id;
-  tv.classList.add('tuning');
-  $('ch').textContent = 'CH ' + c.channel;
-  $('title').textContent = (c.title || '').toUpperCase();
-  startRound(c, true);
-  player.src = clipSrc(c);
-  try { player.currentTime = 0; } catch {}
-  player.play().catch(() => {});
-  setTimeout(() => tv.classList.remove('tuning'), 350);
-  updateDvrUi();
-  renderStrip();
-}
-function dvrPrev() {
-  if (!dvr.clips.length) { toast('No past clips to rewind to yet.'); return; }
-  let i;
-  if (dvr.active) i = dvr.index + 1;
-  else {
-    const k = dvr.clips.findIndex(c => c.id === liveClipId);
-    i = k >= 0 ? k + 1 : 0;
-  }
-  if (i >= dvr.clips.length) { toast('That is as far back as the DVR goes.'); return; }
-  playRewind(i);
-}
-function dvrNext() {
-  if (!dvr.active) { toast('Already watching live.'); return; }
-  if (dvr.index <= 0) { backToLive(); return; }
-  playRewind(dvr.index - 1);
-}
-function backToLive() {
-  const was = dvr.active;
-  dvr.active = false;
-  dvr.index = -1;
-  currentClipId = null;
-  updateDvrUi();
-  renderStrip();
-  if (was) toast('Back to the live broadcast.', 'ok');
-  tune(true);
-}
-$('backLive').onclick = backToLive;
-$('backLiveTv').onclick = backToLive;
-updateDvrUi();
-renderStrip();
 
 /* ---------------------------------------------------------------
    auction clock — ticks locally, re-syncs on every /api/state poll
@@ -1687,12 +1532,24 @@ function toggleMute() {
   renderMute();
   if (!player.muted) player.play().catch(() => {});
 }
-$('muteBtn').onclick = toggleMute;
-$('unmuteTap').onclick = () => { if (player.muted) toggleMute(); };
+on('muteBtn', toggleMute);
+on('unmuteTap', () => { if (player.muted) toggleMute(); });
 player.addEventListener('volumechange', renderMute);
+
+// Fit the frame to the clip actually playing, so a 4:3 archive reel fills the
+// width instead of sitting in a letterbox. Clamped so a freak aspect can't
+// make the player taller than the screen.
+function fitFrameToClip() {
+  const w = player.videoWidth, h = player.videoHeight;
+  if (!w || !h) return;
+  const ar = Math.min(Math.max(w / h, 0.9), 2.4);
+  document.getElementById('tv')?.style.setProperty('--clipar', String(ar));
+}
+player.addEventListener('loadedmetadata', fitFrameToClip);
+player.addEventListener('resize', fitFrameToClip);
 renderMute();
-$('skipBtn').onclick = () => tune(true);
-$('reportBtn').onclick = () => reportClip();
+on('skipBtn', () => tune(true));
+on('reportBtn', () => reportClip());
 
 /* ---------------------------------------------------------------
    cinema mode / fullscreen / keyboard shortcuts
@@ -1716,16 +1573,21 @@ function isFs() { return fsState.mode !== 'off'; }
    --------------------------------------------------------------- */
 const mqPhone = window.matchMedia('(max-width: 760px), (orientation: portrait) and (max-width: 900px)');
 const mqLandPhone = window.matchMedia('(max-width: 950px) and (max-height: 500px) and (orientation: landscape)');
-const MTABS = ['watch', 'chat', 'bid', 'account'];
+// The picture and the Real-or-AI strip live above the tab bar and are never in
+// a tab. The tabs are the three things you can do: bid on a show, buy an ad
+// slot, upload a clip — plus chat. The account is the header button's modal.
+const MTABS = ['bid', 'ad', 'upload', 'chat'];
 
 function setMobileTab(name, persist = true) {
-  const tab = MTABS.includes(name) ? name : 'watch';
+  const tab = MTABS.includes(name) ? name : 'bid';
   document.body.dataset.mtab = tab;
   for (const b of $('mtabs').querySelectorAll('button')) {
-    const on = b.dataset.tab === tab;
-    b.classList.toggle('on', on);
-    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    const sel = b.dataset.tab === tab;
+    b.classList.toggle('on', sel);
+    b.setAttribute('aria-selected', sel ? 'true' : 'false');
   }
+  // Bid and Ad are the same form in its two shapes — the tab picks the shape
+  if (tab === 'bid' || tab === 'ad') setMode(tab === 'ad' ? 'ad' : 'show');
   if (persist) { try { localStorage.setItem('mc_mtab', tab); } catch {} }
   if (persist && mqPhone.matches) {
     try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { window.scrollTo(0, 0); }
@@ -1735,8 +1597,8 @@ function setMobileTab(name, persist = true) {
 for (const b of $('mtabs').querySelectorAll('button')) {
   b.onclick = () => setMobileTab(b.dataset.tab);
 }
-let startTab = 'watch';
-try { startTab = localStorage.getItem('mc_mtab') || 'watch'; } catch {}
+let startTab = 'bid';
+try { startTab = localStorage.getItem('mc_mtab') || 'bid'; } catch {}
 setMobileTab(startTab, false);
 
 // at phone width six overlay buttons cannot be 44px tall and still fit on the
@@ -1750,7 +1612,8 @@ function measureTv() {
   // whatever is left under the picture, the control row and the tab bar is the
   // chat box's budget — the composer has to stay above the fold
   const px = (el) => (el ? el.offsetHeight : 0);
-  const chrome = h + px(document.querySelector('header')) + px($('mobileControls')) + px($('mtabs'));
+  const chrome = h + px(document.querySelector('header')) + px($('raiStrip')) +
+                 px($('mobileControls')) + px($('mtabs'));
   root.style.setProperty('--chath', Math.max(240, Math.round(window.innerHeight - chrome - 26)) + 'px');
 }
 if (window.ResizeObserver) { try { new ResizeObserver(measureTv).observe(tv); } catch {} }
@@ -1868,11 +1731,11 @@ player.addEventListener('webkitendfullscreen', () => {
   fsState.mode = 'off';
   afterFsChange();
   renderMute();                       // iOS can flip muted/paused on the way out
-  if (!dvr.active && player.paused) player.play().catch(() => {});
+  if (player.paused) player.play().catch(() => {});
 });
 
-$('fsBtn').onclick = toggleFullscreen;
-$('cinemaBtn').onclick = () => setCinema(!isCinema());
+on('fsBtn', toggleFullscreen);
+on('cinemaBtn', () => setCinema(!isCinema()));
 
 // in fullscreen the chat rides along as a floating column over the video
 function syncChatPlacement() {
@@ -1972,8 +1835,6 @@ document.addEventListener('keydown', (e) => {
   if (k === 'f') { e.preventDefault(); toggleFullscreen(); }
   else if (k === 'm') { e.preventDefault(); toggleMute(); }
   else if (k === 'c') { e.preventDefault(); setCinema(!isCinema()); }
-  else if (k === 'arrowleft') { e.preventDefault(); dvrPrev(); }
-  else if (k === 'arrowright') { e.preventDefault(); dvrNext(); }
   // real-or-AI votes — desktop only (touch devices bail out above), never while typing
   else if (k === 'r') { e.preventDefault(); castVote('real'); }
   else if (k === 'a') { e.preventDefault(); castVote('ai'); }
@@ -1981,10 +1842,10 @@ document.addEventListener('keydown', (e) => {
 
 // dismissible shortcut hint
 try { if (localStorage.getItem('mc_hint') === '0') $('kbdHint').style.display = 'none'; } catch {}
-$('kbdHintX').onclick = () => {
+on('kbdHintX', () => {
   $('kbdHint').style.display = 'none';
   try { localStorage.setItem('mc_hint', '0'); } catch {}
-};
+});
 
 try { setCinema(localStorage.getItem('mc_cinema') === '1', false); } catch { setCinema(false, false); }
 
@@ -2009,7 +1870,7 @@ function chatScrollToBottom() {
   l.scrollTop = l.scrollHeight;
   chatShowNew(false);
 }
-$('chatNew').onclick = () => chatScrollToBottom();
+on('chatNew', () => chatScrollToBottom());
 $('chatList').addEventListener('scroll', () => { if (chatNearBottom()) chatShowNew(false); },
   { passive: true });
 
@@ -2043,12 +1904,12 @@ function chatAuthState(signedIn) {
     g.style.display = 'block';
     g.innerHTML = 'chatting as a <b>guest</b> — ' +
       '<button type="button" class="linkish" id="chatSignIn">sign in</button> to use your name.';
-    $('chatSignIn').onclick = () => {
+    on('chatSignIn', () => {
       if (isFs()) leaveFullscreen();
       if (isCinema()) setCinema(false);
       setAuthMode('login');
       openAccountModal();
-    };
+    });
   }
 }
 // Only reached when POST /api/chat actually answers 401.
@@ -2129,7 +1990,7 @@ async function chatSend() {
   } catch { m.className = 'msg err'; m.textContent = 'Could not reach the chat relay.'; }
   finally { btn.disabled = false; }
 }
-$('chatSend').onclick = chatSend;
+on('chatSend', chatSend);
 chatCount();
 chatAuthState(false);   // guests can chat — show the composer before /api/state answers
 chatPoll();
@@ -2203,10 +2064,10 @@ function setAuthMode(m) {
   $('password').setAttribute('autocomplete', m === 'signup' ? 'new-password' : 'current-password');
   clearAuthMsg(); // switching tabs must never leave a stale error behind
 }
-$('tabLogin').onclick = () => setAuthMode('login');
-$('tabSignup').onclick = () => setAuthMode('signup');
+on('tabLogin', () => setAuthMode('login'));
+on('tabSignup', () => setAuthMode('signup'));
 
-$('authBtn').onclick = async () => {
+on('authBtn', async () => {
   const m = $('authMsg');
   clearAuthMsg();
   const btn = $('authBtn');
@@ -2231,17 +2092,17 @@ $('authBtn').onclick = async () => {
       m.innerHTML = '✗ ' + esc(e.message) +
         '<br><span style="color:var(--dim)">No account yet? ' +
         '<button type="button" class="linkish" id="switchToSignup">Create one instead</button></span>';
-      $('switchToSignup').onclick = () => { setAuthMode('signup'); $('email').focus(); };
+      on('switchToSignup', () => { setAuthMode('signup'); $('email').focus(); });
     }
   } finally { btn.disabled = false; btn.textContent = label; }
-};
-$('logoutBtn').onclick = async () => {
+});
+on('logoutBtn', async () => {
   await api('/api/logout', { method: 'POST' });
   clearAuthMsg();
   $('password').value = '';
   setAuthMode('login');
   refresh();
-};
+});
 
 // ---- credits ----
 async function buy(packId) {
@@ -2267,12 +2128,17 @@ function setMode(m) {
     ? 'e.g. the mattress absorbs your regrets while a spokesman weeps with joy'
     : 'e.g. a cooking show where the ingredients cook the chef';
   $('bidBtn').textContent = m === 'ad' ? 'Buy this ad slot' : 'Place bid';
+  // the phone's Ad tab shows this same panel, so its heading has to say so
+  $('bidPanelTitle').textContent = m === 'ad' ? 'Buy an ad slot' : 'Bid for the next slot';
+  $('bidPanelHint').textContent = m === 'ad'
+    ? 'A paid ad for a fictional brand. Bids collect for a short window — the highest bid when the clock hits zero takes the slot.'
+    : 'Bids collect for a short window — the highest bid when the clock hits zero programs the next slot.';
   updatePricing(true);
 }
-$('tabShow').onclick = () => setMode('show');
-$('tabAd').onclick = () => setMode('ad');
+on('tabShow', () => setMode('show'));
+on('tabAd', () => setMode('ad'));
 
-$('bidBtn').onclick = async () => {
+on('bidBtn', async () => {
   const m = $('bidMsg'); m.className = 'msg'; m.textContent = '';
   const sec = slotSec();
   const amount = Number($('amount').value);
@@ -2309,10 +2175,10 @@ $('bidBtn').onclick = async () => {
     refresh();
   } catch (e) { m.textContent = '✗ ' + e.message; m.className = 'msg err'; }
   finally { btn.disabled = false; btn.textContent = label; }
-};
+});
 
 // ---- upload ----
-$('uploadBtn').onclick = async () => {
+on('uploadBtn', async () => {
   const m = $('uploadMsg'), bar = $('uploadBar'), btn = $('uploadBtn');
   m.className = 'msg'; m.textContent = '';
   const cfg = uploadCfg();
@@ -2345,7 +2211,7 @@ $('uploadBtn').onclick = async () => {
     refresh();
   } catch (e) { fail(e.message); }
   finally { btn.disabled = false; btn.textContent = 'Upload clip'; bar.style.display = 'none'; }
-};
+});
 function statusLabel(s) {
   return s === 'pending_review' ? 'awaiting review' : s === 'approved' ? 'approved' : s === 'rejected' ? 'rejected' : s;
 }
@@ -2383,7 +2249,7 @@ function reportClip() {
     },
   });
 }
-$('dmcaLink').onclick = reportClip;
+on('dmcaLink', reportClip);
 
 // ---- state polling ----
 async function refresh() {
@@ -2393,11 +2259,6 @@ async function refresh() {
     // auction clock + live viewer count (re-sync the locally ticking clock)
     syncAuction(s.auction);
     setViewers(s.viewers);
-    // rewinding viewers still need a /api/now heartbeat to be counted
-    if (dvr.active) tune(false);
-
-    // DVR: prefer the dedicated endpoint, fall back to the clips in /api/state
-    if (!dvr.endpointOk && Array.isArray(s.recentClips)) { dvr.clips = s.recentClips; renderStrip(); }
 
     // slot pricing + chat auth
     const hadPricing = !!$('slotLen').dataset.filled;
@@ -2470,16 +2331,6 @@ async function refresh() {
           `<span class="what">${esc(b.idea)}</span><span class="amt">${esc(String(b.amount))}cr</span></li>`).join('')
       : '<li><span class="what muted">No pending bids — be the first.</span></li>';
 
-    $('recent').innerHTML = s.recentClips.map(c => {
-      // the clip on screen keeps its provenance hidden while a round is open
-      const tag = gameMasking() && c.id === currentClipId ? '❓ guess it'
-        : c.source === 'ad' ? '📣 AI ad' : c.source === 'bid' ? '◈ AI · ' + esc(c.bidder)
-        : c.source === 'upload' ? '▲ ' + esc(c.bidder || 'viewer')
-        : c.source === 'archive' ? '' : '◈ AI';
-      return `<li><span class="who">CH ${esc(String(c.channel))}</span><span class="what">${esc(c.title)}</span>` +
-        `<span class="amt">${tag}</span></li>`;
-    }).join('');
-
     $('stats').innerHTML =
       `backend: <b>${esc(s.backend)}</b> · payments: <b>${s.stripeEnabled ? 'live' : 'demo'}</b><br>` +
       `library: <b>${esc(String(s.libraryClips))}</b> clips<br>` +
@@ -2488,17 +2339,15 @@ async function refresh() {
       `new clip every <b>${esc(String(s.genIntervalSec))}s</b>` +
       (s.batch?.remaining ? `<br>🔥 batch burst: <b>${esc(String(s.batch.remaining))}</b> queued` : '');
 
-    $('tickerText').textContent =
-      (s.recentClips.map(c => `CH ${c.channel} — ${c.title}`).join('   ✦   ') || 'SIGNAL ACQUIRED') +
-      '   ✦   BID TO PROGRAM THE NEXT DIMENSION   ✦   AI-GENERATED + PUBLIC-DOMAIN ARCHIVE + VIEWER UPLOADS   ✦   18+ · AI CLIPS AIR WITH NO HUMAN PRE-REVIEW';
+    tickerClips = Array.isArray(s.recentClips) ? s.recentClips : [];
+    renderTicker();
   } catch {}
 }
 
 setMode('show'); setAuthMode('login'); renderAcctBtn();
-tune(true); refresh(); loadRecent();
+tune(true); refresh();
 setInterval(refresh, 5000);
-setInterval(loadRecent, 15000);
-setInterval(() => { if (!dvr.active && (player.paused || player.ended)) tune(true); }, 30000);
+setInterval(() => { if (player.paused || player.ended) tune(true); }, 30000);
 </script>
 </body>
 </html>

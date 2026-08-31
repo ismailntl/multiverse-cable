@@ -67,6 +67,35 @@ _pipe = None
 _loaded = {"model": None, "steps": None, "error": None}
 
 
+def _load_fp8_ltx2(repo, torch_dtype):
+    """Load LTX-2 with its fp8 transformer.
+
+    The bf16 19B transformer is ~38GB and OOMs a 48GB card once activations are
+    added. The fp8 distilled build is ~19GB, so it fits with room to generate —
+    and unlike the 0.9.x checkpoints this family produces a synchronized audio
+    track. Falls back to the plain pipeline if the fp8 file can't be used.
+    """
+    import diffusers
+    from huggingface_hub import hf_hub_download
+
+    fname = os.environ.get("FP8_FILE", "ltx-2-19b-distilled-fp8.safetensors")
+    token = os.environ.get("HF_TOKEN") or None
+    path = hf_hub_download(repo, fname, token=token)
+    print(f"[worker] fp8 transformer: {path}", flush=True)
+
+    tf_cls = getattr(diffusers, "LTX2VideoTransformer3DModel", None)
+    if tf_cls is None:
+        raise RuntimeError("diffusers has no LTX2VideoTransformer3DModel")
+    transformer = tf_cls.from_single_file(path, torch_dtype=torch_dtype)
+
+    pipe_cls = getattr(diffusers, "LTX2Pipeline")
+    pipe = pipe_cls.from_pretrained(
+        repo, transformer=transformer, torch_dtype=torch_dtype,
+        low_cpu_mem_usage=True, token=token,
+    )
+    return pipe
+
+
 def get_pipe():
     global _pipe
     if _pipe is not None:
@@ -84,6 +113,19 @@ def get_pipe():
                 errors.append(f"{repo}: diffusers has no {pipe_cls_name}")
                 continue
             print(f"[worker] trying {repo} ({pipe_cls_name})", flush=True)
+            if os.environ.get("USE_FP8") == "1" and "LTX-2" in repo:
+                try:
+                    pipe = _load_fp8_ltx2(repo, torch.bfloat16)
+                    pipe.to("cuda")
+                    if hasattr(pipe, "vae") and hasattr(pipe.vae, "enable_tiling"):
+                        pipe.vae.enable_tiling()
+                    _pipe = pipe
+                    _loaded.update({"model": repo + " (fp8)", "steps": steps, "error": None,
+                                    "has_audio_vae": hasattr(pipe, "audio_vae")})
+                    print(f"[worker] loaded {repo} via fp8 transformer", flush=True)
+                    return _pipe
+                except Exception as e:  # noqa: BLE001
+                    print(f"[worker] fp8 path failed ({type(e).__name__}: {e}); trying standard load", flush=True)
             kwargs = {"torch_dtype": torch.bfloat16, "low_cpu_mem_usage": True}
             if os.environ.get("HF_TOKEN"):
                 kwargs["token"] = os.environ["HF_TOKEN"]

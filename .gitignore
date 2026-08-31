@@ -7,3 +7,4 @@ data/*.log
 .env
 gpu-worker/.venv/
 *.pem
+docs/hostinger-env.txt
