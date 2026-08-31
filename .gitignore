@@ -10,3 +10,4 @@ gpu-worker/.venv/
 docs/hostinger-env.txt
 promo/
 supabase/.temp/
+data/stream-cache/
