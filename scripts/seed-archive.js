@@ -4,7 +4,10 @@
 //
 //   node scripts/seed-archive.js [count] [concurrency]
 import { grabClip } from '../lib/freefeed.js';
-import { store } from '../lib/store.js';
+import { initStore } from '../lib/store-adapter.js';
+
+await initStore();
+import * as db from '../lib/store-adapter.js';
 
 const count = parseInt(process.argv[2] || '60', 10);
 const concurrency = parseInt(process.argv[3] || '4', 10);
@@ -27,7 +30,7 @@ async function worker(n) {
 
 const t0 = Date.now();
 await Promise.all(Array.from({ length: concurrency }, (_, i) => worker(i + 1)));
-const clips = store.state.clips;
+const clips = db.clips();
 const mins = clips.reduce((s, c) => s + c.duration, 0) / 60;
 console.log(
   `\nseeded ${done} clips (${failed} skipped) in ${((Date.now() - t0) / 1000).toFixed(0)}s\n` +

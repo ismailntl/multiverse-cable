@@ -455,7 +455,7 @@
 
   /* ---------- toasts ---------- */
   #toasts { position: fixed; right: 16px; bottom: 16px; z-index: 80; display: grid; gap: 10px;
-            max-width: min(380px, calc(100vw - 32px)); }
+            max-width: min(380px, calc(100vw - 32px)); pointer-events: none; }
   .toast { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--cyan);
     border-radius: 8px; padding: 12px 14px; font-size: 14px; color: var(--text); line-height: 1.5;
     box-shadow: 0 12px 34px #000a; animation: pop .18s ease-out; }
