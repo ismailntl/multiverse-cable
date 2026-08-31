@@ -9,3 +9,5 @@ uvicorn
 pydantic>=2
 tiktoken
 protobuf
+soundfile
+numpy

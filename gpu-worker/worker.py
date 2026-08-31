@@ -38,10 +38,14 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 # The 13B checkpoints need ~26GB in bf16. Module-level CPU offload can't help:
 # offload swaps whole modules, and a single 13B transformer must be resident
 # for its forward pass. So a 24GB card gets the small model, not a slow one.
+# LTX-2.5 carries an audio_vae and generates a synchronized audio track, which
+# is why it leads the list: the older 0.9.x checkpoints are silent. "auto" uses
+# diffusers' DiffusionPipeline so we don't have to guess the pipeline class as
+# the family evolves.
 ALL_CANDIDATES = [
-    ("Lightricks/LTX-2.3-fp8", "LTXPipeline", 8, 24),
-    ("Lightricks/LTX-2.3", "LTXPipeline", 8, 40),
-    ("Lightricks/LTX-2.5-Diffusers", "LTXPipeline", 8, 40),
+    ("Lightricks/LTX-2.5-Diffusers", "auto", 8, 40),
+    ("Lightricks/LTX-2.3", "auto", 8, 40),
+    ("Lightricks/LTX-2", "auto", 8, 40),
     ("Lightricks/LTX-Video-0.9.8-13B-distilled", "LTXPipeline", 8, 40),
     ("Lightricks/LTX-Video-0.9.5", "LTXPipeline", 40, 16),
     ("Lightricks/LTX-Video", "LTXPipeline", 40, 16),
@@ -72,12 +76,18 @@ def get_pipe():
     errors = []
     for repo, pipe_cls_name, steps in candidates_for_gpu():
         try:
-            pipe_cls = getattr(diffusers, pipe_cls_name, None)
+            if pipe_cls_name == "auto":
+                pipe_cls = diffusers.DiffusionPipeline
+            else:
+                pipe_cls = getattr(diffusers, pipe_cls_name, None)
             if pipe_cls is None:
                 errors.append(f"{repo}: diffusers has no {pipe_cls_name}")
                 continue
             print(f"[worker] trying {repo} ({pipe_cls_name})", flush=True)
-            pipe = pipe_cls.from_pretrained(repo, torch_dtype=torch.bfloat16)
+            kwargs = {"torch_dtype": torch.bfloat16}
+            if os.environ.get("HF_TOKEN"):
+                kwargs["token"] = os.environ["HF_TOKEN"]
+            pipe = pipe_cls.from_pretrained(repo, **kwargs)
             # A 13B model in bf16 fits in 22GB but leaves nothing for
             # activations, so it loads fine and then OOMs mid-generation.
             # Below ~40GB, offload layers to CPU instead of pinning all weights.
@@ -94,7 +104,8 @@ def get_pipe():
             if hasattr(pipe, "vae") and hasattr(pipe.vae, "enable_tiling"):
                 pipe.vae.enable_tiling()
             _pipe = pipe
-            _loaded.update({"model": repo, "steps": steps, "error": None})
+            _loaded.update({"model": repo, "steps": steps, "error": None,
+                            "has_audio_vae": hasattr(pipe, "audio_vae") or hasattr(pipe, "vae_audio")})
             print(f"[worker] loaded {repo}", flush=True)
             return _pipe
         except Exception as e:  # noqa: BLE001 - try the next candidate
@@ -111,6 +122,50 @@ class GenRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=2000)
     duration_sec: int = Field(default=6, ge=2, le=30)
     token: str = ""
+
+
+def _mux_audio(video_path, audio_array, sample_rate=None):
+    """Write the generated audio beside the video and mux them into one mp4."""
+    import subprocess
+
+    import numpy as np
+
+    try:
+        import soundfile as sf
+    except ImportError:
+        print("[worker] soundfile missing, shipping video without audio", flush=True)
+        return video_path
+
+    arr = audio_array
+    if hasattr(arr, "detach"):
+        arr = arr.detach().float().cpu().numpy()
+    arr = np.asarray(arr)
+    if arr.ndim > 2:
+        arr = arr.squeeze()
+    if arr.ndim == 2 and arr.shape[0] < arr.shape[1]:
+        arr = arr.T  # (channels, samples) -> (samples, channels)
+
+    sr = int(sample_rate or os.environ.get("AUDIO_SR", "48000"))
+    wav = video_path.replace(".mp4", ".wav")
+    out = video_path.replace(".mp4", "-av.mp4")
+    try:
+        sf.write(wav, arr, sr)
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", video_path, "-i", wav,
+             "-c:v", "copy", "-c:a", "aac", "-shortest", out],
+            check=True, capture_output=True, timeout=180,
+        )
+        os.unlink(video_path)
+        os.unlink(wav)
+        return out
+    except Exception as e:  # noqa: BLE001 - never fail a clip over its audio
+        print(f"[worker] audio mux failed ({e}); shipping video only", flush=True)
+        for f in (wav, out):
+            try:
+                os.unlink(f)
+            except OSError:
+                pass
+        return video_path
 
 
 def touch_activity():
@@ -172,6 +227,10 @@ def generate(req: GenRequest):
             traceback.print_exc()
             raise HTTPException(500, f"generation failed: {type(e).__name__}: {e}")
         frames = result.frames[0]
+        # LTX-2.x returns a synchronized audio track alongside the frames
+        audio = getattr(result, "audio", None)
+        if audio is not None and not isinstance(audio, (list, tuple)):
+            audio = [audio]
 
     from diffusers.utils import export_to_video
 
@@ -179,10 +238,15 @@ def generate(req: GenRequest):
         path = tmp.name
     try:
         export_to_video(frames, path, fps=FPS)
+        if audio:
+            path = _mux_audio(path, audio[0])
         with open(path, "rb") as f:
             data = f.read()
     finally:
-        os.unlink(path)
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
 
     touch_activity()
     return Response(content=data, media_type="video/mp4")
@@ -192,8 +256,11 @@ if __name__ == "__main__":
     import uvicorn
 
     if os.environ.get("PRELOAD", "1") == "1":
-        try:
-            get_pipe()
-        except Exception:  # noqa: BLE001 - serve /health so we can see why
-            traceback.print_exc()
+        def _warm():
+            try:
+                get_pipe()
+            except Exception:  # noqa: BLE001 - /health reports the reason
+                traceback.print_exc()
+
+        threading.Thread(target=_warm, daemon=True).start()
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8189")))

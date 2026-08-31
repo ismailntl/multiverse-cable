@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiverse Cable</title>
 <style>
   :root {
@@ -172,6 +172,9 @@
   #tv:fullscreen .chyron { padding: 56px 26px 20px; font-size: 16px; }
   #tv:fullscreen .chyron-next { font-size: 14px; }
   #tv:fullscreen .tvbtns { top: 18px; right: 18px; }
+  /* the floating chat sits above .tvui, so keep the chrome clear of it */
+  #tv:fullscreen.chatover .tvbtns { right: calc(min(330px, 36%) + 18px); }
+  #tv:fullscreen.chatover .chyron { padding-right: calc(min(330px, 36%) + 34px); }
   #tv:fullscreen .tvtop { top: 18px; left: 18px; }
   #tv:fullscreen .badge { font-size: 14px; padding: 7px 13px; }
   #tv:fullscreen .chyron .credit { font-size: 14px; }
@@ -1223,11 +1226,22 @@ const CHAT_MAX = 240;
 // we never hide the composer on a hunch — only when told to.
 const chat = { lastId: '', seen: new Set(), available: true, signedIn: null, busy: false, skip: 0, blocked: false };
 
+// only stick to the newest message when the reader is already parked at the
+// bottom — scrolling up to read history must never get yanked away
+const CHAT_STICK_PX = 60;
 function chatNearBottom() {
   const l = $('chatList');
-  return l.scrollHeight - l.scrollTop - l.clientHeight < 90;
+  return l.scrollHeight - l.scrollTop - l.clientHeight <= CHAT_STICK_PX;
 }
-function chatScrollToBottom() { const l = $('chatList'); l.scrollTop = l.scrollHeight; }
+function chatShowNew(on) { $('chatNew').hidden = !on; }
+function chatScrollToBottom() {
+  const l = $('chatList');
+  l.scrollTop = l.scrollHeight;
+  chatShowNew(false);
+}
+$('chatNew').onclick = () => chatScrollToBottom();
+$('chatList').addEventListener('scroll', () => { if (chatNearBottom()) chatShowNew(false); },
+  { passive: true });
 
 function chatNote(html) { $('chatOut').innerHTML = html; $('chatOut').style.display = 'block'; }
 function chatSetComposer(on) {
@@ -1292,7 +1306,9 @@ function chatAppend(messages) {
     added++;
   }
   while (list.childElementCount > 200) list.removeChild(list.firstElementChild);
-  if (added && stick) chatScrollToBottom();
+  if (!added) return;
+  if (stick) chatScrollToBottom();
+  else chatShowNew(true);            // reading history — offer a jump instead
 }
 async function chatPoll() {
   if (chat.busy) return;

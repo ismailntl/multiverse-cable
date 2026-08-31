@@ -102,7 +102,7 @@ function publicBid(b) {
 
 function publicClip(c) {
   return {
-    id: c.id, file: c.file, title: c.title, channel: c.channel, duration: c.duration, genre: c.genre,
+    id: c.id, file: c.file, url: c.url ?? null, title: c.title, channel: c.channel, duration: c.duration, genre: c.genre,
     source: c.source, isAd: !!c.isAd, bidder: c.bidder, amount: c.amount, mock: !!c.mock, createdAt: c.createdAt,
   };
 }
