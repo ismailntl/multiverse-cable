@@ -102,7 +102,11 @@
   .tv.uihidden .tvui, .tv.uihidden .chatcol { opacity: 0; pointer-events: none; }
   .tv.uihidden { cursor: none; }
 
-  .chyron { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 14px 11px;
+  /* bottom stack: the game overlay sits directly on top of the chyron, so neither
+     needs a magic offset and neither can ever cover the middle of the picture */
+  .tvbottom { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
+              pointer-events: none; display: flex; flex-direction: column; align-items: flex-start; }
+  .chyron { align-self: stretch; pointer-events: none; padding: 40px 14px 11px;
     background: linear-gradient(transparent, #000b 45%, #000f);
     display: grid; gap: 3px; font-family: var(--mono); font-size: 14px;
     text-shadow: 0 1px 3px #000c; }
@@ -166,10 +170,39 @@
   }
 
   /* ---------- fullscreen ---------- */
+  /* Pseudo-fullscreen: used wherever the container Fullscreen API is missing or
+     refuses (iPhone Safari). The picture is pinned to the viewport with CSS, so
+     the overlay layer — chyron, controls, Real-or-AI — keeps working. */
+  html.pfslock, body.pfslock { overflow: hidden !important; overscroll-behavior: none; }
+  .tv.pfs {
+    position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 90;
+    margin: 0 !important; width: auto !important; height: auto;
+    border: 0; border-radius: 0; box-shadow: none; background: #000;
+  }
+  .tv.pfs video { width: 100%; height: 100%; aspect-ratio: auto; object-fit: contain; background: #000; }
+  .tv.pfs .tvtop { top: calc(10px + env(safe-area-inset-top)); left: calc(10px + env(safe-area-inset-left)); }
+  .tv.pfs .tvbtns { position: absolute; display: flex; grid-template-columns: none;
+    top: calc(10px + env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right)); }
+  .tv.pfs .tvbtns button { min-height: 44px; min-width: 44px; justify-content: center;
+    background: #000a; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    border: 1px solid #ffffff2e; border-radius: 7px; flex-direction: row; }
+  /* the way out is never in doubt */
+  .tv.pfs #fsBtn { border-color: var(--green); color: var(--green); background: #04140acc; }
+  .tv.pfs .chyron { padding: 40px calc(14px + env(safe-area-inset-right))
+                          calc(11px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left)); }
+  .tv.pfs .gameover { margin-left: calc(12px + env(safe-area-inset-left)); }
+  .tv.pfs.chatover .tvbtns { right: calc(min(330px, 36%) + 12px); }
+  .tv.pfs.chatover .chyron { padding-right: calc(min(330px, 36%) + 24px); }
+
   #tv:fullscreen { width: 100vw; height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
   #tv:fullscreen video { width: 100%; height: 100%; aspect-ratio: auto; object-fit: contain; }
   #tv:-webkit-full-screen { width: 100vw; height: 100vh; border: 0; border-radius: 0; }
   #tv:-webkit-full-screen video { width: 100%; height: 100%; aspect-ratio: auto; object-fit: contain; }
+  /* the phone rules pull the picture out past the safe area — never in fullscreen */
+  #tv:fullscreen, #tv:-webkit-full-screen { margin: 0 !important; }
+  #tv:fullscreen .tvbtns { position: absolute; display: flex; grid-template-columns: none; }
+  #tv:fullscreen .tvbtns button { min-height: 44px; flex-direction: row;
+    background: #000a; border: 1px solid #ffffff2e; border-radius: 7px; }
   #tv:fullscreen .chyron { padding: 56px 26px 20px; font-size: 16px; }
   #tv:fullscreen .chyron-next { font-size: 14px; }
   #tv:fullscreen .tvbtns { top: 18px; right: 18px; }
@@ -463,27 +496,32 @@
   .toast.err { border-left-color: var(--red); }
   @keyframes pop { from { opacity: 0; transform: translateY(8px); } }
 
-  /* ---------- "Real or AI?" game ---------- */
-  /* quiz badge: stands in for the provenance badge only until the vote resolves */
+  /* ---------- "Real or AI?" game — a permanent overlay on the picture ---------- */
+  /* quiz badge: stands in for the provenance badge only until the round resolves */
   .badge.quiz { background: #2b1d5e; color: #e7dfff; box-shadow: inset 0 0 0 1px #7c4dff; }
-  .gametoggle { width: 100%; font-weight: 600; }
-  .gametoggle.on { border-color: var(--pink); color: var(--pink); background: #1e0a19; }
-  .gamevote { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-  .gbtn { display: grid; gap: 2px; justify-items: center; align-content: center; min-height: 58px;
-    cursor: pointer; border-radius: 10px; padding: 10px 8px; font-family: var(--ui); font-size: 16px;
-    font-weight: 700; letter-spacing: 1.2px; border: 1px solid var(--line); background: var(--panel-2);
-    color: var(--text); }
-  .gbtn small { font-family: var(--ui); font-size: 11px; font-weight: 500; letter-spacing: 0;
-                color: var(--faint); }
-  .gbtn.real:hover:not([disabled]) { border-color: var(--cyan); color: var(--cyan); }
-  .gbtn.ai:hover:not([disabled]) { border-color: #a98bff; color: #c9b6ff; }
-  .gbtn[disabled] { opacity: .45; cursor: default; }
-  .gameresult { margin-top: 12px; font-size: 13.5px; line-height: 1.5; border-radius: 8px;
-    padding: 10px 12px; border: 1px solid var(--line-soft); background: #0c121c; color: var(--dim); }
-  .gameresult.ok { border-color: #1d4430; background: #0d1e15; color: var(--green); }
-  .gameresult.bad { border-color: #4a2424; background: #221010; color: var(--red); }
-  .gameresult b { color: var(--text); }
-  .gamescore { margin-top: 10px; font-family: var(--mono); font-size: 12.5px; color: var(--dim);
+  .gameover { pointer-events: auto; margin: 0 0 8px 12px; max-width: min(430px, calc(100% - 24px));
+    display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+    background: #05080cb3; -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
+    border: 1px solid #ffffff26; border-radius: 12px; padding: 6px 9px;
+    box-shadow: 0 8px 24px #0009; }
+  .goq { display: flex; align-items: center; gap: 8px; }
+  .golbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.4px; color: var(--amber);
+           white-space: nowrap; }
+  .gob { min-height: 44px; min-width: 58px; padding: 5px 13px; border-radius: 9px; cursor: pointer;
+    font-family: var(--ui); font-size: 14px; font-weight: 700; letter-spacing: 1px;
+    border: 1px solid #ffffff33; background: #0a0f18cc; color: var(--text); flex: 0 0 auto; }
+  .gob.real:hover:not([disabled]) { border-color: var(--cyan); color: var(--cyan); }
+  .gob.ai:hover:not([disabled]) { border-color: #a98bff; color: #c9b6ff; }
+  .gob[disabled] { opacity: .4; cursor: default; }
+  .gob.picked { border-color: var(--amber); color: var(--amber); opacity: .85; }
+  .goline { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap;
+            font-family: var(--mono); font-size: 11px; letter-spacing: .5px; }
+  .gores { color: #cbd5e1; }
+  .gores.ok { color: var(--green); } .gores.bad { color: var(--red); }
+  .gores:empty { display: none; }
+  .gosc { color: var(--faint); white-space: nowrap; }
+  /* the panel keeps the running score, the legal note and the reset — never a switch */
+  .gamescore { font-family: var(--mono); font-size: 12.5px; color: var(--dim);
                display: flex; flex-wrap: wrap; gap: 4px 14px; }
   .gamescore b { color: var(--text); }
   .gamefoot { display: flex; justify-content: space-between; align-items: center; gap: 10px;
@@ -606,15 +644,18 @@
     input[type="file"]::file-selector-button { font-size: 14px; padding: 10px 12px; }
     .check input { width: 22px; height: 22px; }
     .tabs button, button.go, button.ghost, .packs button, .dvrlive, .mtabs button,
-    .gbtn, .clipchip, .chatinput button { min-height: 44px; }
+    .gob, .clipchip, .chatinput button { min-height: 44px; }
     button.go { font-size: 16px; padding: 14px 16px; }
     button.ghost { font-size: 15px; padding: 12px 14px; }
     .tabs button { font-size: 15px; padding: 12px 8px; }
     .packs button { padding: 14px; }
     .clipchip { width: 168px; padding: 11px 12px; }
     .dvrstrip { padding: 12px 2px 6px; }
-    .gamevote { gap: 12px; }
-    .gbtn { min-height: 64px; font-size: 17px; }
+    .gameover { margin: 0 0 6px 10px; padding: 5px 8px; gap: 3px;
+                max-width: min(360px, calc(100% - 20px)); }
+    .gob { min-width: 54px; padding: 4px 11px; font-size: 13.5px; }
+    .golbl { font-size: 10px; letter-spacing: 1.1px; }
+    .goline { font-size: 10.5px; }
     footer { font-size: 13px; }
     #toasts { left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom));
               max-width: none; }
@@ -641,6 +682,7 @@
     .tvbtns button { min-height: 44px; min-width: 44px; justify-content: center; }
     .chyron { padding: 34px calc(14px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom))
                         calc(14px + env(safe-area-inset-left)); }
+    .gameover { margin-left: calc(12px + env(safe-area-inset-left)); }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -716,13 +758,26 @@
               <button type="button" id="reportBtn" aria-label="report this clip" title="report this clip"><span class="ic" aria-hidden="true">⚑</span><span class="tx">report</span></button>
             </div>
             <button type="button" class="unmutetap" id="unmuteTap" aria-label="tap for sound"><span aria-hidden="true">🔇</span><span>Tap for sound</span></button>
-            <div class="chyron">
-              <div class="chyron-main">
-                <span><span class="ch" id="ch">CH ---</span> &nbsp; <span class="title" id="title">TUNING…</span></span>
-                <span class="credit" id="credit"></span>
+            <div class="tvbottom">
+              <div class="gameover" id="gameOver" role="group" aria-label="Real or AI?">
+                <div class="goq">
+                  <span class="golbl" id="goLbl">REAL OR AI?</span>
+                  <button type="button" class="gob real" id="voteReal" aria-label="vote real — genuine archival footage">REAL</button>
+                  <button type="button" class="gob ai" id="voteAi" aria-label="vote AI — machine-generated">AI</button>
+                </div>
+                <div class="goline">
+                  <span class="gores" id="goResult" aria-live="polite"></span>
+                  <span class="gosc" id="goScore"></span>
+                </div>
               </div>
-              <div class="chyron-next"><span class="lbl">NEXT</span><span class="txt" id="nextLine">open slot — highest bid programs it</span></div>
-              <div class="chyron-auc" id="tvAuction"><span class="lbl">AUCTION</span><span class="clk" id="tvAucClock">--:--</span><span class="txt" id="tvAucText">no auction running</span></div>
+              <div class="chyron">
+                <div class="chyron-main">
+                  <span><span class="ch" id="ch">CH ---</span> &nbsp; <span class="title" id="title">TUNING…</span></span>
+                  <span class="credit" id="credit"></span>
+                </div>
+                <div class="chyron-next"><span class="lbl">NEXT</span><span class="txt" id="nextLine">open slot — highest bid programs it</span></div>
+                <div class="chyron-auc" id="tvAuction"><span class="lbl">AUCTION</span><span class="clk" id="tvAucClock">--:--</span><span class="txt" id="tvAucText">no auction running</span></div>
+              </div>
             </div>
           </div>
         </div>
@@ -771,24 +826,16 @@
         <div class="dvrstrip" id="dvrStrip"><span class="empty">Loading the last few clips…</span></div>
       </div>
 
-      <!-- ---------- Real or AI? guessing game ---------- -->
+      <!-- ---------- Real or AI? — voting lives on the picture; this is the scoreboard ---------- -->
       <div class="panel" id="gamePanel" data-mtab="watch" style="margin-top:14px">
         <h2>🎭 Real or AI?</h2>
         <p class="hint">This channel mixes machine-made clips with genuine public-domain archival
-          footage. Switch the game on and the provenance labels hide until you call it.</p>
-        <button type="button" class="ghost gametoggle" id="gameToggle" aria-pressed="false">▢ Play “Real or AI?”</button>
-        <div id="gameLive" style="display:none">
-          <div class="gamevote">
-            <button type="button" class="gbtn real" id="voteReal">REAL<small>archival footage · R</small></button>
-            <button type="button" class="gbtn ai" id="voteAi">AI<small>machine-generated · A</small></button>
-          </div>
-          <div class="gameresult" id="gameResult"></div>
-          <div class="gamescore" id="gameScore"></div>
-          <div class="gamefoot">
-            <span class="legalnote">Labels always come back — they return the moment you vote, and
-              automatically within 15 seconds if you don't.</span>
-            <button type="button" class="linkish" id="gameReset">reset score</button>
-          </div>
+          footage. Call every clip as it airs — the buttons are on the picture itself.</p>
+        <div class="gamescore" id="gameScore"></div>
+        <div class="gamefoot">
+          <span class="legalnote">Labels always come back — the moment you vote, and automatically
+            before the clip ends if you don't. Nothing AI-generated ever finishes unlabelled.</span>
+          <button type="button" class="linkish" id="gameReset">reset score</button>
         </div>
       </div>
 

@@ -16,6 +16,7 @@ import { moderate } from './lib/moderation.js';
 import { GENRES } from './lib/shows.js';
 import { createCheckout, findPack, handleWebhook, stripeEnabled } from './lib/payments.js';
 import { minimumBid, priceTable, quote } from './lib/pricing.js';
+import { check as rateCheck, LIMITS } from './lib/ratelimit.js';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -147,6 +148,18 @@ async function isAdmin(req) {
   return isLoopback(req);
 }
 
+// Rate limit key: the account when signed in, otherwise the source address.
+function limited(res, req, name, user = null) {
+  const key = user?.id ?? clientIp(req);
+  const r = rateCheck(name, key, LIMITS[name]);
+  if (!r.allowed) {
+    json(res, 429, { error: `too many requests — try again in ${r.retryAfter}s` },
+      { 'Retry-After': String(r.retryAfter) });
+    return true;
+  }
+  return false;
+}
+
 const EMAIL_RE = /^[^@\s]+@[^@\s.]+\.[^@\s]+$/;
 
 const server = http.createServer(async (req, res) => {
@@ -212,6 +225,7 @@ const server = http.createServer(async (req, res) => {
     // --- accounts ----------------------------------------------------------
 
     if (req.method === 'POST' && url.pathname === '/api/signup') {
+      if (limited(res, req, 'signup')) return;
       const b = JSON.parse((await readBody(req)) || '{}');
       const email = String(b.email ?? '').trim().toLowerCase();
       const password = String(b.password ?? '');
@@ -233,6 +247,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/login') {
+      if (limited(res, req, 'login')) return;
       const b = JSON.parse((await readBody(req)) || '{}');
       const user = await db.findUserByEmail(String(b.email ?? ''));
       if (!user || !db.checkPassword(user, String(b.password ?? ''))) {
@@ -250,6 +265,7 @@ const server = http.createServer(async (req, res) => {
     // --- credits / stripe --------------------------------------------------
 
     if (req.method === 'POST' && url.pathname === '/api/checkout') {
+      if (limited(res, req, 'checkout')) return;
       const user = await currentUser(req);
       if (!user) return json(res, 401, { error: 'sign in first' });
       const b = JSON.parse((await readBody(req)) || '{}');
@@ -275,6 +291,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/bid') {
       const user = await currentUser(req);
       if (!user) return json(res, 401, { error: 'sign in to place a bid' });
+      if (limited(res, req, 'bid', user)) return;
 
       const b = JSON.parse((await readBody(req)) || '{}');
       const idea = String(b.idea ?? '').trim();
@@ -320,7 +337,9 @@ const server = http.createServer(async (req, res) => {
       // fails. place_bid() debits and inserts in one transaction, so credits
       // can never be taken without a bid existing.
       const name = ad?.brand || user.email.split('@')[0];
-      const bid = await db.placeBid({ userId: user.id, name, idea, amount, genre, kind, ad, durationSec });
+      // Client-supplied key makes a double-clicked submit return the same bid
+      const idemKey = typeof b.idemKey === 'string' ? b.idemKey.slice(0, 64) : null;
+      const bid = await db.placeBid({ userId: user.id, name, idea, amount, genre, kind, ad, durationSec, idemKey });
       if (!bid) return json(res, 402, { error: 'not enough credits' });
       const a = await auction.noteBid();
       await chat.systemMessage(`${name} bid ${amount}cr — "${idea.slice(0, 80)}"`);
@@ -328,6 +347,7 @@ const server = http.createServer(async (req, res) => {
         bid: publicBid(bid),
         credits: (await db.findUser(user.id)).credits,
         auction: await auction.status(),
+        queuePosition: await db.queuePosition(bid.id),
       });
     }
 
@@ -383,6 +403,7 @@ const server = http.createServer(async (req, res) => {
       const user = await currentUser(req);
       if (!user) return json(res, 401, { error: 'sign in to upload a clip' });
 
+      if (limited(res, req, 'upload', user)) return;
       const title = String(url.searchParams.get('title') ?? '').trim().slice(0, 60);
       if (!title) return json(res, 400, { error: 'give your clip a title' });
 
@@ -493,6 +514,7 @@ const server = http.createServer(async (req, res) => {
       if (!clipId || !claim || !EMAIL_RE.test(email)) {
         return json(res, 400, { error: 'clipId, a valid contact email, and a description of the claim are required' });
       }
+      if (limited(res, req, 'dmca')) return;
       const report = await db.addDmca({ clipId, reporter: b.reporter ?? 'anonymous', email, claim, ip: clientIp(req) });
       // Pull the clip off air immediately; review happens out of band.
       // Pull the clip off air but do NOT delete it: this endpoint is
@@ -533,10 +555,38 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-await initStore();
+// A crash mid-generation leaves bids stuck in 'generating' — never aired,
+// never refunded, credits still taken. Sweep them back on boot and hourly.
+async function sweepStaleBids() {
+  try {
+    const n = await db.reclaimStaleBids(30);
+    if (n) console.log(`[bids] reclaimed ${n} stale claim(s) back to the queue`);
+  } catch (err) {
+    console.warn('[bids] stale sweep failed:', err.message);
+  }
+}
 
-server.listen(config.port, () => {
-  console.log(`📺 Multiverse Cable on http://localhost:${config.port} (video: ${activeBackend()}, store: ${db.backend()}, stripe: ${stripeEnabled() ? 'live' : 'demo'})`);
-  startScheduler();
-  startFreeFeed();
+// Never die silently: a host that only sees a dead socket reports 503 with
+// nothing to debug.
+process.on('unhandledRejection', (err) => console.error('[fatal] unhandled rejection:', err));
+process.on('uncaughtException', (err) => console.error('[fatal] uncaught exception:', err));
+
+// Listen FIRST. Managed hosts health-check the port within seconds, so the
+// listener must not wait on Postgres, S3 or a GPU worker to come up.
+server.listen(config.port, '0.0.0.0', async () => {
+  console.log(`📺 Multiverse Cable listening on :${config.port}`);
+  try {
+    await initStore();
+    await sweepStaleBids();
+    setInterval(sweepStaleBids, 3_600_000);
+  } catch (err) {
+    console.error('[boot] store init failed — serving degraded:', err.message);
+  }
+  console.log(`   video: ${activeBackend()} | store: ${db.backend()} | stripe: ${stripeEnabled() ? 'live' : 'demo'}`);
+  try {
+    startScheduler();
+    startFreeFeed();
+  } catch (err) {
+    console.error('[boot] background workers failed to start:', err.message);
+  }
 });
