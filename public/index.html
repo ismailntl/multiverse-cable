@@ -251,6 +251,81 @@
   #tv:fullscreen .badge { font-size: 14px; padding: 7px 13px; }
   #tv:fullscreen .chyron .credit { font-size: 14px; }
 
+  /* ---------- overlay chrome that rides the picture ----------
+     Fullscreen (native or pseudo) and phone landscape hide every part of the
+     page that is not the player, which used to take the Real-or-AI strip and
+     the chat dock off screen with it. Both nodes are re-parented INTO #tv for
+     the duration — the same nodes, the same handlers, never a copy — and they
+     go home again on the way out. */
+  #tv { --fschatw: min(330px, 36%); }
+
+  /* the game: a compact translucent bar welded to the bottom edge */
+  #tv > .rai {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 7;
+    border: 0; border-top: 1px solid #7c4dff80; border-radius: 0;
+    background: linear-gradient(90deg, #2a1252e6 0%, #3b1a63e6 55%, #1d1140e6 100%);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    box-shadow: 0 -10px 26px #0009; flex-wrap: nowrap; gap: 4px 8px;
+    margin: 0; overflow: hidden;
+    padding: 5px calc(12px + env(safe-area-inset-right))
+             calc(5px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+  }
+  #tv > .rai .railbl { font-size: 10.5px; letter-spacing: 1.1px; }
+  #tv > .rai .gob { min-height: 44px; min-width: 60px; padding: 4px 13px; font-size: 14px; }
+  #tv > .rai .gores, #tv > .rai .gosc { font-size: 11px; }
+  #tv > .rai .raireset { min-width: 32px; min-height: 32px; }
+  /* lift the chyron clear of the bar so both stay readable */
+  #tv.raiover .tvbottom { bottom: var(--raih, 58px); }
+
+  /* the chat panel: the one dock, floated over the picture, hidden until asked */
+  #chatBtn { display: none; }
+  body.isfs #chatBtn, body.landtv #chatBtn { display: inline-flex; }
+  /* six 44px buttons will not fit across a phone-width picture */
+  @media (max-width: 760px) { body.isfs #cinemaBtn { display: none; } }
+  #tv > .chatcol {
+    position: absolute; z-index: 8; left: auto; width: var(--fschatw);
+    top: calc(8px + env(safe-area-inset-top));
+    right: calc(8px + env(safe-area-inset-right));
+    bottom: calc(8px + env(safe-area-inset-bottom) + var(--kbd, 0px));
+    padding: 0; margin: 0; height: auto; min-height: 0; max-height: none;
+    display: flex; transition: opacity .25s ease;
+  }
+  #tv > .chatcol .chatbox {
+    background: #05080eeb; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border: 1px solid #ffffff2e; border-radius: 12px;
+  }
+  #tv > .chatcol .chatlist {
+    min-height: 0 !important; max-height: none !important;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+    padding: 8px 10px; gap: 6px; font-size: 13px;
+  }
+  #tv > .chatcol .chathead { padding: 7px 10px; font-size: 10.5px; }
+  #tv > .chatcol .chatnote { padding: 8px 10px; font-size: 12.5px; }
+  #tv > .chatcol .chatfoot form { padding: 8px; }
+  #tv > .chatcol .chatinput input { font-size: 16px; padding: 10px 11px; }
+  #tv > .chatcol .chatinput button { min-height: 44px; padding: 8px 14px; }
+  #tv > .chatcol .guestnote, #tv > .chatcol .chatmeta { font-size: 11.5px; }
+  /* the auto-hide takes the chrome — never the game bar or an open chat panel */
+  #tv.uihidden > .rai, #tv.uihidden > .chatcol { opacity: 1; pointer-events: auto; cursor: auto; }
+  /* keep the chyron, the buttons and the game bar out from under the panel */
+  #tv.fschat.chatover .tvbtns { right: calc(var(--fschatw) + 14px); }
+  #tv.fschat.chatover .chyron { padding-right: calc(var(--fschatw) + 18px); }
+  #tv.fschat.chatover > .rai { right: calc(var(--fschatw) + 12px); }
+  /* A 36% column over a portrait phone is a keyhole, and it squeezes the button
+     row off the picture — so on a phone the panel is a sheet across the bottom,
+     sitting on top of the game bar, and the controls keep their full width. */
+  @media (max-width: 760px) {
+    #tv.fschat > .chatcol {
+      top: auto; width: auto; height: min(58%, 420px);
+      left: calc(6px + env(safe-area-inset-left));
+      right: calc(6px + env(safe-area-inset-right));
+      bottom: calc(var(--raih, 58px) + 6px + var(--kbd, 0px));
+    }
+    #tv.fschat.chatover .tvbtns { right: calc(10px + env(safe-area-inset-right)); }
+    #tv.fschat.chatover .chyron { padding-right: calc(14px + env(safe-area-inset-right)); }
+    #tv.fschat.chatover > .rai { right: 0; }
+  }
+
   /* ---------- chat ---------- */
   .chatcol { min-width: 0; min-height: 0; display: flex; }
   .chatbox { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0;
@@ -718,7 +793,9 @@
      PHONE LANDSCAPE — near-fullscreen video with overlay chrome
      ========================================================= */
   @media (max-width: 950px) and (max-height: 500px) and (orientation: landscape) {
-    header, .ticker, footer, .rai, .panel, .kbdhint, .mtabs, #mobileControls,
+    /* scoped to the page copies on purpose: the strip and the chat dock are
+       re-parented into #tv here, and those must stay on screen */
+    header, .ticker, footer, .stage > .rai, .panel, .kbdhint, .mtabs, #mobileControls,
     .layout > .chatcol, .stage > .chatcol { display: none !important; }
     .wrap { max-width: none; margin: 0; padding: 0; }
     .layout, .stage { grid-template-columns: 1fr; gap: 0; padding: 0; margin: 0; }
@@ -802,6 +879,7 @@
               <button type="button" id="muteBtn" aria-label="unmute" title="unmute (m)"><span class="ic" aria-hidden="true">🔇</span><span class="tx">unmute</span></button>
               <button type="button" id="cinemaBtn" aria-pressed="false" aria-label="cinema mode" title="hide the side panels (c)"><span class="ic" aria-hidden="true">▭</span><span class="tx">cinema</span></button>
               <button type="button" id="fsBtn" aria-pressed="false" aria-label="fullscreen" title="fullscreen (f)"><span class="ic" aria-hidden="true">⛶</span><span class="tx">fullscreen</span></button>
+              <button type="button" id="chatBtn" aria-pressed="false" aria-label="show chat" title="show chat over the picture"><span class="ic" aria-hidden="true">💬</span><span class="tx">chat</span></button>
               <button type="button" id="skipBtn" aria-label="resync to live" title="jump to whatever is on now"><span class="ic" aria-hidden="true">⏭</span><span class="tx">resync</span></button>
               <button type="button" id="reportBtn" aria-label="report this clip" title="report this clip"><span class="ic" aria-hidden="true">⚑</span><span class="tx">report</span></button>
             </div>
@@ -1516,6 +1594,7 @@ setInterval(renderAuction, 1000);
 // mobile browsers refuse audio autoplay, so the picture starts muted and says so
 function tvBtnLabel(id, icon, label, title) {
   const b = $(id);
+  if (!b) return;
   b.querySelector('.ic').textContent = icon;
   b.querySelector('.tx').textContent = label;
   b.setAttribute('aria-label', label);
@@ -1554,7 +1633,7 @@ on('reportBtn', () => reportClip());
 /* ---------------------------------------------------------------
    cinema mode / fullscreen / keyboard shortcuts
    --------------------------------------------------------------- */
-const stage = $('stage'), chatDock = $('chatDock');
+const stage = $('stage'), chatDock = $('chatDock'), raiStrip = $('raiStrip');
 const mainCol = document.querySelector('.main'), tvbtns = document.querySelector('.tvbtns');
 
 /* Fullscreen has three shapes and the code has to know which one it is in:
@@ -1612,7 +1691,9 @@ function measureTv() {
   // whatever is left under the picture, the control row and the tab bar is the
   // chat box's budget — the composer has to stay above the fold
   const px = (el) => (el ? el.offsetHeight : 0);
-  const chrome = h + px(document.querySelector('header')) + px($('raiStrip')) +
+  // the strip only counts against the budget while it is under the picture
+  const chrome = h + px(document.querySelector('header')) +
+                 px(raiStrip.parentElement === tv ? null : raiStrip) +
                  px($('mobileControls')) + px($('mtabs'));
   root.style.setProperty('--chath', Math.max(240, Math.round(window.innerHeight - chrome - 26)) + 'px');
 }
@@ -1737,14 +1818,53 @@ player.addEventListener('webkitendfullscreen', () => {
 on('fsBtn', toggleFullscreen);
 on('cinemaBtn', () => setCinema(!isCinema()));
 
-// in fullscreen the chat rides along as a floating column over the video
+/* Fullscreen and phone landscape are the two states where nothing outside the
+   player is on screen. Both of the interactive things under the picture — the
+   Real-or-AI strip and the chat dock — are moved INTO #tv for the duration and
+   put back on the way out. They are re-parented, never cloned, so there is one
+   of each in the document at all times and every handler stays wired. */
+function overlayMode() { return isFs() || mqLandPhone.matches; }
+
+// the game must stay playable when the page around the player is gone
+function syncRaiPlacement() {
+  const overTv = overlayMode();
+  if (overTv) {
+    if (raiStrip.parentElement !== tv) tv.appendChild(raiStrip);
+  } else if (raiStrip.parentElement !== stage || raiStrip.previousElementSibling !== tv) {
+    stage.insertBefore(raiStrip, tv.nextSibling);   // home: between player and tabs
+  }
+  const on = raiStrip.parentElement === tv;
+  tv.classList.toggle('raiover', on);
+  if (on) {
+    const h = raiStrip.offsetHeight;
+    if (h > 0) tv.style.setProperty('--raih', h + 'px');
+  } else tv.style.removeProperty('--raih');
+}
+
+// chat over the picture is opt-in — it is never allowed to blank the frame on
+// its own — and it is the same dock, with the same poll loop, moved not copied
+let fsChat = false;
+function renderChatBtn() {
+  const b = $('chatBtn');
+  if (!b) return;
+  b.setAttribute('aria-pressed', fsChat ? 'true' : 'false');
+  tvBtnLabel('chatBtn', '💬', fsChat ? 'hide chat' : 'chat',
+             fsChat ? 'hide the chat panel' : 'show chat over the picture');
+}
+function setFsChat(on) {
+  fsChat = !!on;
+  renderChatBtn();
+  syncChatPlacement();
+  measureTv();
+  if (fsChat) { showTvUi(); setTimeout(chatScrollToBottom, 0); }
+}
 function syncChatPlacement() {
   // phone: chat lives in its own tab below the tab bar, not beside the picture.
-  // It only rides into the player when there is genuinely room for a column —
-  // a 140px strip over a portrait phone helps nobody, and every move of this
-  // node is a chance to strand it, so we make as few as possible.
+  // Over the player it only appears when the viewer asks for it with the
+  // fullscreen chat button, and every move of this node is a chance to strand
+  // it, so we make as few as possible.
   const phone = mqPhone.matches && !mqLandPhone.matches;
-  const overTv = isFs() && window.innerWidth > 760;
+  const overTv = overlayMode() && fsChat;
   const target = overTv ? tv : phone ? mainCol : stage;
   const anchor = $('mtabs');
   const placed = chatDock.parentElement === target &&
@@ -1754,10 +1874,20 @@ function syncChatPlacement() {
     else target.appendChild(chatDock);
   }
   // chat floating over the picture? then keep the chyron + buttons clear of it
-  tv.classList.toggle('chatover', chatDock.parentElement === tv ||
-                                 (isCinema() && window.innerWidth > 760));
+  const inTv = chatDock.parentElement === tv;
+  tv.classList.toggle('fschat', inTv);
+  tv.classList.toggle('chatover', inTv || (isCinema() && window.innerWidth > 760));
 }
-function syncLayout() { syncChatPlacement(); syncControlsPlacement(); measureTv(); }
+function syncLayout() {
+  // leaving fullscreen/landscape puts the panel away: it is never left open
+  // over a picture that is back in the page
+  if (fsChat && !overlayMode()) { fsChat = false; renderChatBtn(); }
+  syncChatPlacement(); syncRaiPlacement(); syncControlsPlacement();
+  document.body.classList.toggle('landtv', mqLandPhone.matches);
+  measureTv();
+}
+on('chatBtn', () => setFsChat(!fsChat));
+renderChatBtn();
 window.addEventListener('resize', syncLayout);
 window.addEventListener('orientationchange', () => { syncLayout(); setTimeout(syncLayout, 300); });
 if (screen.orientation && screen.orientation.addEventListener) {
@@ -1767,7 +1897,19 @@ if (mqPhone.addEventListener) {
   mqPhone.addEventListener('change', syncLayout);
   mqLandPhone.addEventListener('change', syncLayout);
 }
-syncControlsPlacement();
+// the on-screen keyboard eats the bottom of a pinned player — the floating chat
+// composer rides above it instead of hiding underneath
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const syncKbd = () => {
+    const gap = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    document.documentElement.style.setProperty('--kbd', (gap > 60 ? gap : 0) + 'px');
+  };
+  vv.addEventListener('resize', syncKbd);
+  vv.addEventListener('scroll', syncKbd);
+  syncKbd();
+}
+syncLayout();
 
 let hideTimer = null, overControl = false;
 function typingInChat() {
@@ -1777,8 +1919,9 @@ function typingInChat() {
 function showTvUi() {
   tv.classList.remove('uihidden');
   clearTimeout(hideTimer);
-  // never auto-hide on a touch screen: the exit control has to stay findable
-  if (isFs() && !isTouch()) {
+  // never auto-hide on a touch screen: the exit control has to stay findable,
+  // and never while the floating chat panel is open — it is being read
+  if (isFs() && !isTouch() && !fsChat) {
     hideTimer = setTimeout(() => {
       if (!overControl && !typingInChat()) tv.classList.add('uihidden');
     }, 3000);
@@ -1787,7 +1930,8 @@ function showTvUi() {
 for (const ev of ['mousemove', 'pointerdown', 'touchstart', 'keydown']) {
   tv.addEventListener(ev, showTvUi, { passive: true });
 }
-for (const el of [document.querySelector('.tvbtns'), chatDock]) {
+for (const el of [tvbtns, chatDock, raiStrip]) {
+  if (!el) continue;
   el.addEventListener('mouseenter', () => { overControl = true; showTvUi(); });
   el.addEventListener('mouseleave', () => { overControl = false; showTvUi(); });
 }
