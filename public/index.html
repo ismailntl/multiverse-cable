@@ -196,13 +196,14 @@
 
   /* ---------- stage: TV + chat side by side ---------- */
   .stage { display: grid; grid-template-columns: minmax(0, 1fr) clamp(240px, 19vw, 300px);
-           grid-template-areas: "tv chat" "rai chat";
+           grid-template-areas: "tv chat" "rai chat" "rw chat";
            gap: 0 14px; position: relative; align-items: stretch; }
   .stage > .tv { grid-area: tv; min-width: 0; }
   .stage > .rai { grid-area: rai; min-width: 0; }
+  .stage > .rewind { grid-area: rw; min-width: 0; }
   .stage > .chatcol { grid-area: chat; }
   @media (max-width: 1040px) {
-    .stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "tv" "rai" "chat"; }
+    .stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "tv" "rai" "rw" "chat"; }
     .stage > .chatcol { margin-top: 14px; }
   }
 
@@ -210,7 +211,7 @@
   body.cinema .side { display: none; }
   body.cinema .layout { grid-template-columns: minmax(0, 1fr); }
   body.cinema .stage { grid-template-columns: minmax(0, 1fr);
-                       grid-template-areas: "tv" "rai" "chat"; }
+                       grid-template-areas: "tv" "rai" "rw" "chat"; }
   body.cinema .chatcol, .tv > .chatcol {
     position: absolute; top: 0; right: 0; bottom: 0; width: min(330px, 36%);
     z-index: 6; padding: 10px; transition: opacity .25s ease;
@@ -567,9 +568,6 @@
   ul.list .amt { color: var(--green); white-space: nowrap; font-family: var(--mono); font-size: 13px; }
   ul.list .muted { color: var(--dim); }
 
-  .stats { font-family: var(--mono); font-size: 13px; color: var(--dim); line-height: 1.9; }
-  .stats b { color: var(--text); font-weight: 700; }
-
   .wallet { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
   .wallet .who { color: var(--text); font-size: 14px; word-break: break-all; }
   .wallet .label { color: var(--dim); font-size: 13px; }
@@ -695,6 +693,40 @@
     line-height: 1; padding: 0 6px; }
   .raireset:hover { color: var(--text); border-color: var(--line); }
 
+  /* ---------- rewind: clips that already aired ----------
+     A sibling of the picture and of the game strip, and always BELOW both —
+     it must never push the video or the Real-or-AI row off a phone screen. */
+  .rewind { display: flex; flex-direction: column; gap: 7px; min-width: 0;
+    margin-top: 12px; padding: 9px 11px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--r); }
+  .rewind[hidden] { display: none; }
+  .rwhead { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; min-width: 0; }
+  .rwstate { font-family: var(--mono); font-size: 11px; letter-spacing: 1.4px; color: var(--red);
+    white-space: nowrap; flex: 0 0 auto; }
+  .rewind.rewound .rwstate { color: var(--amber); }
+  .rwcap { font-size: 12px; color: var(--faint); min-width: 0; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; }
+  .rwlive { flex: 0 0 auto; background: var(--panel-2); border: 1px solid var(--line);
+    color: var(--dim); border-radius: 999px; padding: 5px 12px; cursor: pointer;
+    font-family: var(--ui); font-size: 12.5px; font-weight: 600; }
+  .rwlive:hover:not([disabled]) { border-color: var(--green); color: var(--green); }
+  .rwlive[disabled] { opacity: .42; cursor: default; }
+  .rwlist { display: flex; gap: 8px; min-width: 0; max-width: 100%;
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+    overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px; }
+  .rwchip { flex: 0 0 auto; width: 148px; text-align: left; display: grid; gap: 2px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px;
+    padding: 7px 9px; cursor: pointer; font-family: var(--ui); color: var(--text); }
+  .rwchip:hover { border-color: var(--cyan); }
+  .rwchip.on { border-color: var(--amber); background: #1a1608; }
+  .rwchip.onair { border-style: dashed; }
+  .rwchip .rwch { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1px;
+    color: var(--amber); white-space: nowrap; }
+  .rwchip.onair .rwch::after { content: " · ON AIR"; color: var(--red); }
+  .rwchip .rwt { font-size: 12.5px; line-height: 1.3; color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
   /* ---------- tap for sound ---------- */
   .unmutetap { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
     z-index: 7; align-items: center; gap: 9px; min-height: 52px; padding: 13px 20px;
@@ -744,6 +776,10 @@
            margin-right: calc(-12px - env(safe-area-inset-right)); }
     .railbl { font-size: 10.5px; letter-spacing: 1.2px; }
     .gores, .gosc { font-size: 11px; }
+    /* the rewind strip stays under the game strip and stays compact */
+    .rewind { margin-top: 10px; padding: 8px 9px; gap: 6px; border-radius: 12px; }
+    .rwchip { width: 132px; }
+    .rwlive { min-height: 34px; }
     /* typing: unpin the tab bar so nothing sits on the composer */
     body.kbdopen .mtabs { position: static; }
     .tv video { width: 100%; aspect-ratio: var(--clipar, 16/9); height: auto; object-fit: contain; background: #000; }
@@ -859,8 +895,8 @@
   @media (max-width: 950px) and (max-height: 500px) and (orientation: landscape) {
     /* scoped to the page copies on purpose: the strip and the chat dock are
        re-parented into #tv here, and those must stay on screen */
-    header, .ticker, footer, .stage > .rai, .panel, .kbdhint, .mtabs, #mobileControls,
-    .layout > .chatcol, .stage > .chatcol { display: none !important; }
+    header, .ticker, footer, .stage > .rai, .stage > .rewind, .panel, .kbdhint, .mtabs,
+    #mobileControls, .layout > .chatcol, .stage > .chatcol { display: none !important; }
     .wrap { max-width: none; margin: 0; padding: 0; }
     .layout, .stage { grid-template-columns: 1fr; gap: 0; padding: 0; margin: 0; }
     .tv { border: 0; border-radius: 0; box-shadow: none; height: 100dvh; }
@@ -920,7 +956,7 @@
     <img class="logo" id="brandLogo" src="/favicon.svg" alt="Multiverse Cable" width="28" height="28" decoding="async">
     <h1>MULTIVERSE CABLE</h1>
     <span class="sub">∞ channels · one broadcast · bid to program the next dimension</span>
-    <a class="ghbtn" href="https://github.com/ismailntl/multiverse-cable" target="_blank" rel="noopener" title="Source on GitHub (AGPL-3.0)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.011.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.120 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.873.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="lbl">GitHub</span><span class="tag">AGPL</span></a>
+    <a class="ghbtn" href="https://github.com/ismailntl/multiverse-cable" target="_blank" rel="noopener" title="Source on GitHub (AGPL-3.0)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span class="lbl">GitHub</span><span class="tag">AGPL</span></a>
     <button type="button" class="acctbtn" id="acctBtn" aria-haspopup="dialog" aria-expanded="false">
       <span class="who" id="acctBtnWho">Sign in</span><span class="cr" id="acctBtnCr" hidden></span>
     </button>
@@ -973,6 +1009,17 @@
           <button type="button" class="raireset" id="goReset" title="reset your Real or AI? score" aria-label="reset your Real or AI? score">↺</button>
         </div>
 
+        <!-- Rewind: clips that already aired. Never above the game strip, and
+             never tall enough to push the picture off a phone screen. -->
+        <section class="rewind" id="rewindStrip" hidden aria-label="Rewind — clips that already aired">
+          <div class="rwhead">
+            <span class="rwstate" id="rwState">● LIVE</span>
+            <span class="rwcap" id="rwCap">pick a clip that already aired</span>
+            <button type="button" class="rwlive" id="rwLive" disabled>↩ back to live</button>
+          </div>
+          <div class="rwlist" id="rwList"></div>
+        </section>
+
         <aside class="chatcol" id="chatDock" aria-label="Live chat" data-mtab="chat">
           <div class="chatbox">
             <div class="chathead"><span class="dot"></span> Live chat</div>
@@ -1007,7 +1054,7 @@
       </nav>
 
       <div class="kbdhint" id="kbdHint">
-        <span><kbd>F</kbd> fullscreen · <kbd>M</kbd> mute · <kbd>C</kbd> cinema · <kbd>R</kbd>/<kbd>A</kbd> real or AI</span>
+        <span><kbd>F</kbd> fullscreen · <kbd>M</kbd> mute · <kbd>C</kbd> cinema · <kbd>R</kbd>/<kbd>A</kbd> real or AI · <kbd>←</kbd>/<kbd>→</kbd> rewind</span>
         <button type="button" class="x" id="kbdHintX" aria-label="Dismiss shortcut hint" title="Dismiss">×</button>
       </div>
     </div>
@@ -1099,11 +1146,6 @@
       <div class="panel" data-mtab="bid ad">
         <h2>Bid board</h2>
         <ul class="list" id="bids"><li><span class="what muted">No pending bids.</span></li></ul>
-      </div>
-
-      <div class="panel" data-mtab="upload">
-        <h2>Transmission stats</h2>
-        <div class="stats" id="stats">…</div>
       </div>
 
       <!-- The account panel lives here only until the script parks it in a
@@ -1377,6 +1419,114 @@ function clipBadge(c) {
 function clipSrc(c) { return (c && c.url) ? c.url : ('/videos/' + (c && c.file)); }
 
 /* ---------------------------------------------------------------
+   REWIND — watch something that already aired, then come back.
+   The list comes from /api/recent (newest first). While rewound the
+   player belongs to the viewer: /api/now keeps polling so the live
+   pointer and the viewer heartbeat stay fresh, but it never yanks
+   the picture back to the broadcast. The Real-or-AI backstop is
+   untouched — a rewound AI clip still reveals before it ends.
+   --------------------------------------------------------------- */
+const REWIND_N = 12;
+const rewind = { clips: [], id: null, active: false, available: true };
+let livePointerId = null;
+
+function rwIndex() {
+  if (!rewind.active || rewind.id == null) return -1;
+  return rewind.clips.findIndex(c => c && c.id === rewind.id);
+}
+function renderRewind() {
+  const wrap = $('rewindStrip');
+  if (!wrap) return;
+  if (!rewind.available || !rewind.clips.length) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+
+  const list = $('rwList');
+  const sig = rewind.clips.map(c => c.id).join(',');
+  if (list.dataset.sig !== sig) {
+    list.dataset.sig = sig;
+    // every string here is server data — always escaped
+    list.innerHTML = rewind.clips.map((c, i) =>
+      `<button type="button" class="rwchip" data-i="${i}">` +
+      `<span class="rwch">CH ${esc(String(c.channel == null ? '---' : c.channel))}</span>` +
+      `<span class="rwt">${esc(c.title || 'untitled transmission')}</span></button>`).join('');
+    for (const b of list.querySelectorAll('.rwchip')) {
+      b.title = rewind.clips[Number(b.dataset.i)] ? String(rewind.clips[Number(b.dataset.i)].title || '') : '';
+      b.onclick = () => playRewind(Number(b.dataset.i));
+    }
+  }
+
+  const cur = rwIndex();
+  wrap.classList.toggle('rewound', rewind.active);
+  $('rwState').textContent = rewind.active ? '⏪ REWIND' : '● LIVE';
+  const cap = $('rwCap');
+  if (cap) {
+    const c = cur >= 0 ? rewind.clips[cur] : null;
+    cap.textContent = rewind.active
+      ? (c ? 'CH ' + c.channel + ' — ' + (c.title || 'untitled transmission') : 'off the live broadcast')
+      : 'pick a clip that already aired';
+  }
+  const back = $('rwLive');
+  if (back) back.disabled = !rewind.active;
+  for (const b of list.querySelectorAll('.rwchip')) {
+    const i = Number(b.dataset.i), c = rewind.clips[i];
+    b.classList.toggle('on', i === cur);
+    b.classList.toggle('onair', !!c && c.id === livePointerId);
+  }
+}
+async function pollRecent() {
+  if (!rewind.available) return;
+  try {
+    const r = await fetch('/api/recent?n=' + REWIND_N);
+    if (r.status === 404) {            // no rewind on this deployment — hide, never error
+      rewind.available = false;
+      rewind.clips = [];
+      const w = $('rewindStrip'); if (w) w.hidden = true;
+      return;
+    }
+    const b = await r.json().catch(() => ({}));
+    if (!r.ok) return;
+    if (Array.isArray(b.clips)) rewind.clips = b.clips.filter(c => c && c.id);
+    renderRewind();
+  } catch {}
+}
+function playRewind(i) {
+  const c = rewind.clips[i];
+  if (!c) return;
+  rewind.active = true;
+  rewind.id = c.id;
+  currentClipId = c.id;
+  tv.classList.add('tuning');
+  $('ch').textContent = 'CH ' + c.channel;
+  // a clip already called keeps its verdict; one never called can be called now
+  startRound(c);
+  player.src = clipSrc(c);
+  try { player.currentTime = 0; } catch {}
+  clearTuningWhenReady();
+  player.play().catch(() => {});
+  renderRewind(); renderLiveStat(); renderTicker();
+}
+function backToLive() {
+  const was = rewind.active;
+  rewind.active = false;
+  rewind.id = null;
+  renderRewind(); renderLiveStat();
+  if (was) tune(true);
+}
+// the list runs newest-first, so "newer" is one step towards index 0
+function rewindNewer() {
+  if (!rewind.active) return;
+  const i = rwIndex();
+  if (i <= 0) { backToLive(); return; }   // past the newest — back to the broadcast
+  playRewind(i - 1);
+}
+function rewindOlder() {
+  if (!rewind.available || !rewind.clips.length) return;
+  const i = rwIndex();
+  if (!rewind.active || i < 0) { playRewind(0); return; }
+  if (i + 1 < rewind.clips.length) playRewind(i + 1);
+}
+
+/* ---------------------------------------------------------------
    "Real or AI?" — always on, played on the channel's own mix from
    a strip that sits directly BELOW the picture (never on top of it).
    LEGAL: provenance labels are masked ONLY between a clip starting
@@ -1536,13 +1686,19 @@ on('goReset', () => {
 loadGame();
 renderGame();
 
-async function tune(force = false) {
+// heartbeat = keep the live pointer, the clock skew and the viewer count fresh
+// without ever touching the player. That is the only /api/now work done while
+// the viewer is rewound.
+async function tune(force = false, heartbeat = false) {
   try {
     const b0 = await api('/api/now');
     const now = b0.now;
     setViewers(b0.viewers);
     if (typeof b0.serverTime === 'number') serverSkew = b0.serverTime - Date.now();
-    if (!now) { setTimeout(() => tune(), 3000); return; }
+    if (!now) { if (!heartbeat) setTimeout(() => tune(), 3000); return; }
+    if (livePointerId !== now.clip.id) { livePointerId = now.clip.id; renderRewind(); }
+    // REWIND: the picture is the viewer's, not the broadcast's — never yank it back
+    if (heartbeat || rewind.active) return;
     if (!force && now.clip.id === currentClipId) return;
     currentClipId = now.clip.id;
     tv.classList.add('tuning');
@@ -1552,23 +1708,48 @@ async function tune(force = false) {
 
     player.src = clipSrc(now.clip);
     player.currentTime = Math.max(0, now.offset);
+    // Clear the static when a frame actually paints, not N ms after play()
+    // resolves — on a slow CDN fetch that left the tuning noise up for
+    // seconds and read as a broken player.
+    clearTuningWhenReady();
     await player.play().catch(() => {});
-    setTimeout(() => tv.classList.remove('tuning'), 350);
-  } catch { setTimeout(() => tune(true), 3000); }
+  } catch { if (!heartbeat && !rewind.active) setTimeout(() => tune(true), 3000); }
 }
+// The static overlay is a transition, not a loading spinner. It comes off on
+// the first painted frame, with a hard cap so a stalled fetch can't strand it.
+let tuningTimer = null;
+function clearTuning() {
+  tv.classList.remove('tuning');
+  if (tuningTimer) { clearTimeout(tuningTimer); tuningTimer = null; }
+  player.removeEventListener('loadeddata', clearTuning);
+  player.removeEventListener('playing', clearTuning);
+}
+function clearTuningWhenReady() {
+  if (tuningTimer) clearTimeout(tuningTimer);
+  player.addEventListener('loadeddata', clearTuning, { once: true });
+  player.addEventListener('playing', clearTuning, { once: true });
+  tuningTimer = setTimeout(clearTuning, 1200);   // hard cap
+}
+
 // LEGAL BACKSTOP: the label is back on screen before the clip runs out, always
 player.addEventListener('timeupdate', () => {
   if (!gameMasking()) return;
   const d = player.duration;
   if (Number.isFinite(d) && d > 0 && d - player.currentTime <= GAME_END_LEAD_S) autoReveal();
 });
-player.addEventListener('ended', () => { autoReveal(); tune(true); });
-player.addEventListener('error', () => { setTimeout(() => tune(true), 2000); });
+player.addEventListener('ended', () => {
+  autoReveal();                                  // the label is on screen before anything else
+  if (rewind.active) { rewindNewer(); return; }  // walk forward through what already aired
+  tune(true);
+});
+player.addEventListener('error', () => {
+  if (rewind.active) { rewindNewer(); return; }  // strictly forward, so it always lands on live
+  setTimeout(() => tune(true), 2000);
+});
 
 /* ---------------------------------------------------------------
-   live status line — the DVR rewind strip and its "recently
-   materialized" list are gone, so there is no non-live state left
-   and nothing polls /api/recent any more.
+   live status line — LIVE while synced to the broadcast, REWIND
+   while the viewer is watching something that already aired.
    --------------------------------------------------------------- */
 let viewers = null;
 
@@ -1583,7 +1764,7 @@ function setViewers(n) {
   renderLiveStat();
 }
 function renderLiveStat() {
-  $('liveLabel').textContent = 'LIVE';       // the dot is the ● when live
+  $('liveLabel').textContent = rewind.active ? 'REWIND' : 'LIVE';
   $('viewerCount').textContent = viewerText(viewers);
 }
 renderLiveStat();
@@ -1712,7 +1893,7 @@ function fitFrameToClip() {
 player.addEventListener('loadedmetadata', fitFrameToClip);
 player.addEventListener('resize', fitFrameToClip);
 renderMute();
-on('skipBtn', () => tune(true));
+on('skipBtn', () => { if (rewind.active) backToLive(); else tune(true); });
 on('reportBtn', () => reportClip());
 
 /* ---------------------------------------------------------------
@@ -1779,6 +1960,7 @@ function measureTv() {
   // the strip only counts against the budget while it is under the picture
   const chrome = h + px(document.querySelector('header')) +
                  px(raiStrip.parentElement === tv ? null : raiStrip) +
+                 px($('rewindStrip')) +
                  px($('mobileControls')) + px($('mtabs'));
   root.style.setProperty('--chath', Math.max(240, Math.round(window.innerHeight - chrome - 26)) + 'px');
 }
@@ -2067,6 +2249,9 @@ document.addEventListener('keydown', (e) => {
   // real-or-AI votes — desktop only (touch devices bail out above), never while typing
   else if (k === 'r') { e.preventDefault(); castVote('real'); }
   else if (k === 'a') { e.preventDefault(); castVote('ai'); }
+  // rewind: ← steps back through what already aired, → forward and out to live
+  else if (k === 'arrowleft') { e.preventDefault(); rewindOlder(); }
+  else if (k === 'arrowright') { e.preventDefault(); rewindNewer(); }
 });
 
 // dismissible shortcut hint
@@ -2584,23 +2769,21 @@ async function refresh() {
           `<span class="what">${esc(b.idea)}</span><span class="amt">${esc(String(b.amount))}cr</span></li>`).join('')
       : '<li><span class="what muted">No pending bids — be the first.</span></li>';
 
-    $('stats').innerHTML =
-      `backend: <b>${esc(s.backend)}</b> · payments: <b>${s.stripeEnabled ? 'live' : 'demo'}</b><br>` +
-      `library: <b>${esc(String(s.libraryClips))}</b> clips<br>` +
-      `generated today: <b>${esc(String(s.stats.generatedToday))}</b><br>` +
-      `all-time: <b>${esc(String(s.stats.generated))}</b> (failed: ${esc(String(s.stats.failed))})<br>` +
-      `new clip every <b>${esc(String(s.genIntervalSec))}s</b>` +
-      (s.batch?.remaining ? `<br>🔥 batch burst: <b>${esc(String(s.batch.remaining))}</b> queued` : '');
-
     tickerClips = Array.isArray(s.recentClips) ? s.recentClips : [];
     renderTicker();
   } catch {}
 }
 
+on('rwLive', backToLive);
+renderRewind();
+
 setMode('show'); setAuthMode('login'); renderAcctBtn();
-tune(true); refresh();
+tune(true); refresh(); pollRecent();
 setInterval(refresh, 5000);
-setInterval(() => { if (player.paused || player.ended) tune(true); }, 30000);
+setInterval(pollRecent, 15000);
+// the live pointer + the viewer heartbeat keep ticking even while rewound
+setInterval(() => tune(false, true), 10000);
+setInterval(() => { if (!rewind.active && (player.paused || player.ended)) tune(true); }, 30000);
 
 // --- feedback ---------------------------------------------------------------
 on('fbBtn', () => openModal({
