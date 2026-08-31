@@ -184,5 +184,20 @@ json.dump({"region": region, "profile": profile, "token": token,
 PY
 
 echo "wrote data/instance.json"
+
+# The platform discovers GPUs through data/worker.json (see lib/generate.js).
+# Without this the box boots, loads the model and sits there unused while
+# billing by the hour, which is the expensive kind of silent failure.
+echo "-- waiting for public IP"
+aws ec2 wait instance-running --instance-ids $IIDS
+WIP=$(aws ec2 describe-instances --instance-ids $IIDS \
+  --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+python3 - "$WIP" "$TOKEN" $IIDS <<'PY' > "$ROOT/data/worker.json"
+import json, sys
+ip, token, *ids = sys.argv[1:]
+json.dump({"workers": [{"url": f"http://{ip}:8189", "token": token, "instanceId": i}
+                       for i in ids]}, sys.stdout, indent=2)
+PY
+echo "wrote data/worker.json -> http://$WIP:8189"
 echo "first boot installs torch/diffusers and downloads model weights (~20-40 min)."
 echo "watch: bash scripts/gpu-status.sh"
