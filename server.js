@@ -197,6 +197,7 @@ const server = http.createServer(async (req, res) => {
         backend: activeBackend(),
         batch: batchStatus(),
         libraryClips: db.clips().length,
+        aiClips: await db.generatedCount(),
         stats: await db.stats(),
         nextSlot: pending[0] ? publicBid(pending[0]) : null,
         pendingBids: pending.slice(0, 20).map(publicBid),

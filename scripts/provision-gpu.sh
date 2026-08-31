@@ -130,7 +130,7 @@ cat > /opt/mc/target-watchdog.sh <<'TWEOF'
 # produced rather than wall-clock, and survives the operator's session ending.
 [ -z "\$AI_TARGET" ] && exit 0
 n=\$(curl -fsS --max-time 20 "\$PLATFORM_URL/api/state" \
-    | python3 -c 'import sys,json;print(json.load(sys.stdin)["stats"]["generated"])' 2>/dev/null)
+    | python3 -c 'import sys,json;print(json.load(sys.stdin)["aiClips"])' 2>/dev/null)
 case "\$n" in ''|*[!0-9]*) exit 0 ;; esac   # unreachable/garbled: never terminate on a bad read
 if [ "\$n" -ge "\$AI_TARGET" ]; then
   logger -t mc "target \$n/\$AI_TARGET reached - terminating"
