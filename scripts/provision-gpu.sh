@@ -18,6 +18,13 @@
 set -euo pipefail
 
 REGION="${REGION:-us-east-1}"
+DISK_GB="${DISK_GB:-300}"
+HF_TOKEN="${HF_TOKEN:-}"                    # required for gated repos (LTX-2.5)
+MODEL_ID="${MODEL_ID:-}"                    # pin a repo; empty = worker autodetects
+PIPELINE="${PIPELINE:-auto}"
+STEPS="${STEPS:-8}"                         # distilled checkpoints sample in ~8
+AI_TARGET="${AI_TARGET:-}"                  # terminate once library hits this
+PLATFORM_URL="${PLATFORM_URL:-https://multiversecable.com}"   # LTX-2 weights + HF cache; 300 was too tight for LTX-2.5
 ITYPE="${ITYPE:-g6e.xlarge}"
 COUNT="${COUNT:-1}"
 MARKET="${MARKET:-on-demand}"
@@ -95,6 +102,10 @@ After=network.target
 Environment=WORKER_TOKEN=$TOKEN
 Environment=HF_HOME=/opt/mc/hf
 Environment=PRELOAD=1
+Environment=HF_TOKEN=$HF_TOKEN
+Environment=MODEL_ID=$MODEL_ID
+Environment=PIPELINE=$PIPELINE
+Environment=STEPS=$STEPS
 WorkingDirectory=/opt/mc
 ExecStart=/opt/mc/venv/bin/python /opt/mc/worker.py
 Restart=always
@@ -113,6 +124,25 @@ if [ ! -f "\$f" ] || [ \$(( \$(date +%s) - \$(stat -c %Y "\$f") )) -gt 2700 ]; t
 fi
 WDEOF
 chmod +x /opt/mc/watchdog.sh
+cat > /opt/mc/target-watchdog.sh <<'TWEOF'
+#!/bin/bash
+# Terminate once the library reaches AI_TARGET. Spend then tracks clips
+# produced rather than wall-clock, and survives the operator's session ending.
+[ -z "\$AI_TARGET" ] && exit 0
+n=\$(curl -fsS --max-time 20 "\$PLATFORM_URL/api/state" \
+    | python3 -c 'import sys,json;print(json.load(sys.stdin)["stats"]["generated"])' 2>/dev/null)
+case "\$n" in ''|*[!0-9]*) exit 0 ;; esac   # unreachable/garbled: never terminate on a bad read
+if [ "\$n" -ge "\$AI_TARGET" ]; then
+  logger -t mc "target \$n/\$AI_TARGET reached - terminating"
+  shutdown -h now "mc target reached"
+fi
+TWEOF
+chmod +x /opt/mc/target-watchdog.sh
+cat > /etc/default/mc-target <<'DEFEOF'
+AI_TARGET=$AI_TARGET
+PLATFORM_URL=$PLATFORM_URL
+DEFEOF
+echo '*/5 * * * * root . /etc/default/mc-target && /opt/mc/target-watchdog.sh' > /etc/cron.d/mc-target
 echo '*/5 * * * * root /opt/mc/watchdog.sh' > /etc/cron.d/mc-watchdog
 touch /tmp/mc-last-activity
 EOF
@@ -131,8 +161,9 @@ for PAIR in $SUBNETS; do
       --image-id "$AMI" --instance-type "$ITYPE" --key-name $NAME --count "$COUNT" \
       --security-group-ids "$SG" --subnet-id "$SUBNET" \
       "${MARKET_ARGS[@]}" \
-      --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=300,VolumeType=gp3,DeleteOnTermination=true}' \
+      --block-device-mappings "DeviceName=/dev/sda1,Ebs={VolumeSize=$DISK_GB,VolumeType=gp3,DeleteOnTermination=true}" \
       --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$NAME},{Key=project,Value=multiverse-cable}]" \
+      --instance-initiated-shutdown-behavior terminate \
       --user-data "$USERDATA" \
       --query 'Instances[].InstanceId' --output text 2>/tmp/mc-launch-err); then
     echo "launched in $AZ"
