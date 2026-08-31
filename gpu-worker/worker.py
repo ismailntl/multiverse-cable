@@ -84,15 +84,23 @@ def get_pipe():
                 errors.append(f"{repo}: diffusers has no {pipe_cls_name}")
                 continue
             print(f"[worker] trying {repo} ({pipe_cls_name})", flush=True)
-            kwargs = {"torch_dtype": torch.bfloat16}
+            kwargs = {"torch_dtype": torch.bfloat16, "low_cpu_mem_usage": True}
             if os.environ.get("HF_TOKEN"):
                 kwargs["token"] = os.environ["HF_TOKEN"]
+            # A 19B model is ~38GB in bf16 — larger than this box's RAM, so
+            # materialising it on the CPU before .to("cuda") gets the process
+            # OOM-killed. device_map streams each shard straight to the GPU.
+            device_map = os.environ.get("DEVICE_MAP", "cuda" if torch.cuda.is_available() else "")
+            if device_map:
+                kwargs["device_map"] = device_map
             pipe = pipe_cls.from_pretrained(repo, **kwargs)
             # A 13B model in bf16 fits in 22GB but leaves nothing for
             # activations, so it loads fine and then OOMs mid-generation.
             # Below ~40GB, offload layers to CPU instead of pinning all weights.
             total_gb = torch.cuda.get_device_properties(0).total_memory / 1e9
-            if total_gb < FULL_GPU_MIN_GB:
+            if device_map:
+                pass  # accelerate already placed the weights
+            elif total_gb < FULL_GPU_MIN_GB:
                 print(f"[worker] {total_gb:.0f}GB GPU -> model CPU offload", flush=True)
                 pipe.enable_model_cpu_offload()
             else:

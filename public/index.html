@@ -45,6 +45,21 @@
   }
   @keyframes hue { to { filter: hue-rotate(360deg); } }
   header .sub { color: var(--dim); font-size: 13px; }
+  /* account is a door, not a column — the header carries the only handle to it */
+  .acctbtn { margin-left: auto; align-self: center; display: inline-flex; align-items: center;
+    gap: 8px; min-height: 40px; max-width: min(320px, 46vw); padding: 7px 14px;
+    background: var(--panel); border: 1px solid var(--line); color: var(--text);
+    border-radius: 999px; cursor: pointer; font-family: var(--ui); font-size: 13.5px;
+    font-weight: 600; }
+  .acctbtn:hover { border-color: var(--green); color: var(--green); }
+  .acctbtn .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .acctbtn .cr { font-family: var(--mono); font-size: 12.5px; color: var(--green); flex: 0 0 auto; }
+  .acctbtn .cr[hidden] { display: none; }
+  /* the account + upload panels are hosted inside the modal — shed the panel chrome */
+  #modalBody #acctPanel, #modalBody #uploadPanel {
+    background: none; border: 0; border-radius: 0; padding: 0; margin: 0; }
+  #modalBody #acctTitle { display: none; }
+  #modalBody #uploadPanel { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
   .ticker {
     overflow: hidden; white-space: nowrap; border-top: 1px solid var(--line-soft);
     border-bottom: 1px solid var(--line-soft); margin: 10px 0 14px; padding: 6px 0;
@@ -193,6 +208,14 @@
   .tv.pfs .gameover { margin-left: calc(12px + env(safe-area-inset-left)); }
   .tv.pfs.chatover .tvbtns { right: calc(min(330px, 36%) + 12px); }
   .tv.pfs.chatover .chyron { padding-right: calc(min(330px, 36%) + 24px); }
+  @media (max-width: 760px) {
+    /* a phone has no room for a labelled button row and the status corner side by
+       side, so the status drops under the row instead of being written over */
+    .tv.pfs .tvbtns { flex-wrap: nowrap; gap: 7px; }
+    .tv.pfs .tvbtns button > .tx { display: none; }
+    .tv.pfs .tvbtns #fsBtn > .tx { display: inline; font-size: 13px; }
+    .tv.pfs .tvtop { top: calc(62px + env(safe-area-inset-top)); max-width: calc(100% - 20px); }
+  }
 
   #tv:fullscreen { width: 100vw; height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
   #tv:fullscreen video { width: 100%; height: 100%; aspect-ratio: auto; object-fit: contain; }
@@ -336,6 +359,36 @@
   .aucqueue b { color: var(--dim); }
   .auction + .tabs { margin-top: 14px; }
   .msg:empty, .aucbeat:empty, .aucqueue:empty { display: none; }
+
+  /* ---------- desktop: the bid flow is the point of the right column ----------
+     Account moved into a modal so this could sit at the top; it has to stay
+     whole above the fold at 1440x900, so the column runs tighter than the page
+     and the two variable-length auction lines are clamped. */
+  @media (min-width: 1041px) {
+    .side > .panel { padding: 14px 16px; margin-bottom: 14px; }
+    .side .panel .hint { margin-bottom: 9px; font-size: 12.5px; line-height: 1.42;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .side .panel h2 + form, .side .panel h2 + .tabs, .side .panel h2 + div,
+    .side .panel h2 + ul { margin-top: 10px; }
+    .side .auction { padding: 10px 11px; gap: 6px; }
+    .side .aucclock { gap: 8px; }
+    .side .aucclock .num { font-size: 24px; }
+    .side .aucleader, .side .aucbeat { font-size: 12.5px; line-height: 1.42; }
+    .side .aucqueue { font-size: 11.5px; line-height: 1.4; }
+    .side .aucleader .idea, .side .aucqueue {
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .side .auction + .tabs { margin-top: 10px; }
+    .side .tabs + form, .side .tabs + div { margin-top: 10px; }
+    .side .tabs button { padding: 8px; font-size: 13.5px; }
+    .side form { gap: 8px; }
+    .side label.field { gap: 4px; font-size: 12.5px; }
+    .side input, .side select, .side textarea { padding: 9px 11px; font-size: 14px; }
+    .side #idea { min-height: 56px; }
+    .side .pricebox { padding: 6px 10px; font-size: 12px; gap: 2px 8px; }
+    .side button.go { padding: 11px 16px; font-size: 14.5px; }
+    /* the modal is its own space — none of the squeeze above applies in there */
+    #modalBody .panel { padding: 0; }
+  }
 
   /* ---------- keyboard hint ---------- */
   .kbdhint { display: flex; align-items: center; gap: 10px; justify-content: space-between;
@@ -585,6 +638,9 @@
     .tv.chatover .chyron { padding-right: 10px; }
 
     /* --- control cluster moves below the picture at phone width --- */
+    /* the labelled unmute button sits right under the picture — the pill would
+       only land on the Real-or-AI overlay, so it is kept for fullscreen only */
+    body:not(.isfs) .tv.ismuted .unmutetap { display: none; }
     #mobileControls { display: block; padding: 8px 0 9px; }
     #mobileControls .tvbtns { position: static; display: grid; gap: 8px;
                               grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -643,6 +699,7 @@
     input[type="file"] { font-size: 15px; }
     input[type="file"]::file-selector-button { font-size: 14px; padding: 10px 12px; }
     .check input { width: 22px; height: 22px; }
+    .acctbtn { min-height: 44px; font-size: 14px; }
     .tabs button, button.go, button.ghost, .packs button, .dvrlive, .mtabs button,
     .gob, .clipchip, .chatinput button { min-height: 44px; }
     button.go { font-size: 16px; padding: 14px 16px; }
@@ -732,6 +789,9 @@
   <header>
     <h1>▚ MULTIVERSE CABLE</h1>
     <span class="sub">∞ channels · one broadcast · bid to program the next dimension</span>
+    <button type="button" class="acctbtn" id="acctBtn" aria-haspopup="dialog" aria-expanded="false">
+      <span class="who" id="acctBtnWho">Sign in</span><span class="cr" id="acctBtnCr" hidden></span>
+    </button>
   </header>
   <div class="ticker"><span id="tickerText">TUNING INTO THE SIGNAL…</span></div>
 
@@ -851,42 +911,7 @@
     </div>
 
     <div class="side">
-      <!-- account -->
-      <div class="panel" id="acctPanel" data-mtab="account">
-        <h2 id="acctTitle">Your account</h2>
-        <div id="loggedOut">
-          <div class="tabs">
-            <button type="button" id="tabLogin" class="on">Sign in</button>
-            <button type="button" id="tabSignup">Create account</button>
-          </div>
-          <form id="authForm" onsubmit="return false">
-            <label class="field">Email
-              <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
-            </label>
-            <label class="field">Password
-              <input id="password" type="password" placeholder="at least 8 characters" autocomplete="current-password">
-            </label>
-            <div id="signupExtras" style="display:none;gap:10px;">
-              <label class="check"><input type="checkbox" id="ageConfirmed"> <span>I confirm I am 18 or older.</span></label>
-              <label class="check"><input type="checkbox" id="termsAccepted"> <span>I accept the <a href="/policy" target="_blank">content policy</a> and understand the channel mixes AI-generated clips (which air with no human pre-review), public-domain archival footage, and viewer uploads, and may include mature content.</span></label>
-            </div>
-            <button class="go" type="button" id="authBtn">Sign in</button>
-            <div class="msg" id="authMsg"></div>
-          </form>
-        </div>
-        <div id="loggedIn" style="display:none">
-          <div class="wallet">
-            <span>
-              <span id="userEmail" class="who"></span><br>
-              <span class="label">broadcast credits</span>
-            </span>
-            <span class="credits" id="credits">0</span>
-          </div>
-          <div class="packs" id="packs"></div>
-          <div class="msg" id="buyMsg" style="margin-top:10px"></div>
-          <button class="ghost" type="button" id="logoutBtn" style="margin-top:12px">Sign out</button>
-        </div>
-      </div>
+
 
       <!-- bidding -->
       <div class="panel" data-mtab="bid">
@@ -936,8 +961,69 @@
         </form>
       </div>
 
-      <!-- upload -->
-      <div class="panel" id="uploadPanel" data-mtab="account">
+      <!-- phone: the Account tab is a door to the same modal the header button opens -->
+      <div class="panel" id="acctTab" data-mtab="account">
+        <h2>Your account</h2>
+        <p class="hint" id="acctTabHint">Sign in to bid, buy credits and upload your own clips.</p>
+        <button class="go" type="button" id="acctTabBtn">Open your account</button>
+      </div>
+
+
+
+      <div class="panel" data-mtab="watch">
+        <h2>Next slot goes to</h2>
+        <div class="nextslot" id="nextslot"><span class="empty">Nobody yet — the machine picks a random dimension.</span></div>
+      </div>
+
+      <div class="panel" data-mtab="bid">
+        <h2>Bid board</h2>
+        <ul class="list" id="bids"><li><span class="what muted">No pending bids.</span></li></ul>
+      </div>
+
+      <div class="panel" data-mtab="account">
+        <h2>Transmission stats</h2>
+        <div class="stats" id="stats">…</div>
+      </div>
+
+      <!-- Account + upload live here only until the script parks them in a
+           detached host; they are shown inside the modal, never in the page. -->
+      <div id="acctHost">
+      <div class="panel" id="acctPanel">
+        <h2 id="acctTitle">Your account</h2>
+        <div id="loggedOut">
+          <div class="tabs">
+            <button type="button" id="tabLogin" class="on">Sign in</button>
+            <button type="button" id="tabSignup">Create account</button>
+          </div>
+          <form id="authForm" onsubmit="return false">
+            <label class="field">Email
+              <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+            </label>
+            <label class="field">Password
+              <input id="password" type="password" placeholder="at least 8 characters" autocomplete="current-password">
+            </label>
+            <div id="signupExtras" style="display:none;gap:10px;">
+              <label class="check"><input type="checkbox" id="ageConfirmed"> <span>I confirm I am 18 or older.</span></label>
+              <label class="check"><input type="checkbox" id="termsAccepted"> <span>I accept the <a href="/policy" target="_blank">content policy</a> and understand the channel mixes AI-generated clips (which air with no human pre-review), public-domain archival footage, and viewer uploads, and may include mature content.</span></label>
+            </div>
+            <button class="go" type="button" id="authBtn">Sign in</button>
+            <div class="msg" id="authMsg"></div>
+          </form>
+        </div>
+        <div id="loggedIn" style="display:none">
+          <div class="wallet">
+            <span>
+              <span id="userEmail" class="who"></span><br>
+              <span class="label">broadcast credits</span>
+            </span>
+            <span class="credits" id="credits">0</span>
+          </div>
+          <div class="packs" id="packs"></div>
+          <div class="msg" id="buyMsg" style="margin-top:10px"></div>
+          <button class="ghost" type="button" id="logoutBtn" style="margin-top:12px">Sign out</button>
+        </div>
+      </div>
+      <div class="panel" id="uploadPanel">
         <h2>Upload your own clip</h2>
         <p class="hint">Put your own footage on the channel — a paid slot.</p>
         <div id="uploadOut" class="msg">Sign in above to upload a clip.</div>
@@ -962,20 +1048,6 @@
           </div>
         </div>
       </div>
-
-      <div class="panel" data-mtab="watch">
-        <h2>Next slot goes to</h2>
-        <div class="nextslot" id="nextslot"><span class="empty">Nobody yet — the machine picks a random dimension.</span></div>
-      </div>
-
-      <div class="panel" data-mtab="bid">
-        <h2>Bid board</h2>
-        <ul class="list" id="bids"><li><span class="what muted">No pending bids.</span></li></ul>
-      </div>
-
-      <div class="panel" data-mtab="account">
-        <h2>Transmission stats</h2>
-        <div class="stats" id="stats">…</div>
       </div>
     </div>
   </div>
@@ -989,8 +1061,16 @@
 </div>
 
 <script>
-const $ = (id) => document.getElementById(id);
+// The account + upload panels are a modal, not a column. Between openings they
+// sit in a detached host, so the page carries no account form fields at all —
+// and $() searches the host too, so every existing lookup keeps working wherever
+// the nodes currently are.
+let acctStash = null;
+const $ = (id) => document.getElementById(id) || (acctStash ? acctStash.querySelector('#' + id) : null);
 const player = $('player'), tv = $('tv');
+acctStash = document.createElement('div');
+acctStash.appendChild($('acctHost'));
+let acctOpen = false;
 let currentClipId = null, mode = 'show', authMode = 'login', state = {};
 
 // sensible fallbacks until /api/state ships the upload config
@@ -1021,10 +1101,60 @@ function toast(text, kind = '') {
 
 // ---- reusable modal ----
 let modalState = null;
+// the account nodes are live DOM, not a template — they always go home again,
+// so nothing is ever stranded or duplicated by opening another modal on top
+function stashAccount() {
+  const host = $('acctHost');
+  if (host && acctStash && host.parentElement !== acctStash) acctStash.appendChild(host);
+  if (acctOpen) { acctOpen = false; $('acctBtn').setAttribute('aria-expanded', 'false'); }
+}
 function closeModal() {
   $('modal').classList.remove('show');
   $('modalOk').disabled = false;
+  $('modalOk').style.display = '';
+  $('modalActions').style.display = 'flex';
+  stashAccount();
   modalState = null;
+}
+function openAccountModal() {
+  stashAccount();
+  const body = $('modalBody'), msg = $('modalMsg');
+  $('modalTitle').textContent = state.user ? 'Your account' : 'Sign in';
+  body.innerHTML = '';
+  msg.textContent = ''; msg.className = 'msg';
+  body.appendChild($('acctHost'));
+  // the panels carry their own actions — the shared row keeps only a way out
+  $('modalActions').style.display = 'flex';
+  $('modalOk').style.display = 'none';
+  $('modalCancel').textContent = 'Close';
+  modalState = null;
+  acctOpen = true;
+  $('acctBtn').setAttribute('aria-expanded', 'true');
+  $('modal').classList.add('show');
+  if (!isTouch()) {
+    const f = state.user ? $('logoutBtn') : $('email');
+    setTimeout(() => { try { f && f.focus(); } catch {} }, 40);
+  }
+}
+function acctHandle(email) {
+  const s = String(email || '').trim();
+  const local = s.split('@')[0] || s;
+  return local.length > 16 ? local.slice(0, 15) + '…' : local;
+}
+function renderAcctBtn() {
+  const u = state.user;
+  $('acctBtnWho').textContent = u ? acctHandle(u.email) : 'Sign in';
+  const cr = $('acctBtnCr');
+  cr.hidden = !u;
+  cr.textContent = u ? u.credits + 'cr' : '';
+  $('acctBtn').setAttribute('aria-label', u
+    ? 'Your account — ' + u.email + ', ' + u.credits + ' credits'
+    : 'Sign in or create an account');
+  $('acctTabHint').textContent = u
+    ? 'Buy credits, upload a clip, or sign out.'
+    : 'Sign in to bid, buy credits and upload your own clips.';
+  $('acctTabBtn').textContent = u ? 'Open your account' : 'Sign in or create an account';
+  if (acctOpen) $('modalTitle').textContent = u ? 'Your account' : 'Sign in';
 }
 /**
  * openModal({ title, intro, fields:[{id,label,type,placeholder,maxlength,rows}],
@@ -1032,6 +1162,7 @@ function closeModal() {
  * ctx = { setError, setOk, setBusy, close, replace(html) }
  */
 function openModal(opts) {
+  stashAccount();                     // never let another modal wipe the account nodes
   const body = $('modalBody'), msg = $('modalMsg');
   $('modalTitle').textContent = opts.title || '';
   body.innerHTML = '';
@@ -1094,6 +1225,8 @@ $('modalOk').onclick = async () => {
   catch (e) { modalState.ctx.setBusy(false); modalState.ctx.setError('✗ ' + e.message); }
 };
 $('modalCancel').onclick = () => closeModal();
+$('acctBtn').onclick = openAccountModal;
+$('acctTabBtn').onclick = openAccountModal;
 $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) closeModal(); });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && $('modal').classList.contains('show')) closeModal();
@@ -1136,17 +1269,21 @@ function clipBadge(c) {
 function clipSrc(c) { return (c && c.url) ? c.url : ('/videos/' + (c && c.file)); }
 
 /* ---------------------------------------------------------------
-   "Real or AI?" — a guessing game played on the channel's own mix.
-   Provenance labels are hidden ONLY between a clip starting and the
-   round resolving; every round always resolves to the truth, either
-   on the vote or on a 15s timer. There is no way to keep them off.
+   "Real or AI?" — always on, played on the channel's own mix from
+   the overlay riding on the picture.
+   LEGAL: provenance labels are masked ONLY between a clip starting
+   and the round resolving. A round always resolves to the truth —
+   on the vote, at the clip's end, or on a 15s cap, whichever comes
+   first. Nothing AI-generated ever finishes unlabelled, and there
+   is no switch that keeps the labels off.
    --------------------------------------------------------------- */
-const GAME_REVEAL_MS = 15000;
+const GAME_REVEAL_MS = 15000;      // hard cap, even for a very long clip
+const GAME_END_LEAD_S = 0.75;      // reveal this far before the clip runs out
 const game = {
-  on: false,
   timer: null,
   round: { clipId: null, truth: null, eligible: false, voted: null, correct: null, revealed: true },
   score: { correct: 0, total: 0, streak: 0, best: 0 },
+  played: new Map(),               // clipId -> {voted, correct} — a rewind never scores twice
 };
 let curClip = null, curRewind = false;
 
@@ -1156,11 +1293,11 @@ function gameTruth(c) {
   return c.source === 'archive' ? 'real' : 'ai';
 }
 const truthLabel = (t) => t === 'real' ? 'genuine archival footage' : 'AI-generated';
-function gameMasking() { return game.on && game.round.eligible && !game.round.revealed; }
+const truthShort = (t) => t === 'real' ? 'ARCHIVAL' : 'AI-GENERATED';
+function gameMasking() { return game.round.eligible && !game.round.revealed; }
 
 function loadGame() {
   try {
-    game.on = localStorage.getItem('mc_game_on') === '1';
     const s = JSON.parse(localStorage.getItem('mc_game_score') || 'null');
     if (s && typeof s === 'object') {
       for (const k of ['correct', 'total', 'streak', 'best']) {
@@ -1169,12 +1306,10 @@ function loadGame() {
       }
     }
   } catch {}
+  try { localStorage.removeItem('mc_game_on'); } catch {}   // the opt-in is gone for good
 }
 function saveGame() {
-  try {
-    localStorage.setItem('mc_game_on', game.on ? '1' : '0');
-    localStorage.setItem('mc_game_score', JSON.stringify(game.score));
-  } catch {}
+  try { localStorage.setItem('mc_game_score', JSON.stringify(game.score)); } catch {}
 }
 
 // the single place the on-screen provenance chrome is written
@@ -1198,13 +1333,19 @@ function renderProvenance() {
   $('credit').textContent = masked ? 'provenance hidden until you call it' : clipCredit(c);
 }
 
-// one round per clip — a forced re-tune to the same clip never re-opens it
+// one round per clip — a forced re-tune to the same clip never re-opens it,
+// and a clip already called keeps its verdict when you rewind back to it
 function startRound(clip, rewind) {
   curClip = clip; curRewind = !!rewind;
   if (game.round.clipId === clip.id) { renderProvenance(); renderGame(); return; }
+  // whatever was on screen is leaving — its provenance can never stay masked
+  game.round.revealed = true;
   clearTimeout(game.timer); game.timer = null;
   const truth = gameTruth(clip);
-  game.round = { clipId: clip.id, truth, eligible: !!truth, voted: null, correct: null, revealed: !truth };
+  const past = game.played.get(clip.id);
+  game.round = past
+    ? { clipId: clip.id, truth, eligible: !!truth, voted: past.voted, correct: past.correct, revealed: true }
+    : { clipId: clip.id, truth, eligible: !!truth, voted: null, correct: null, revealed: !truth };
   if (gameMasking()) game.timer = setTimeout(autoReveal, GAME_REVEAL_MS);
   renderProvenance();
   renderGame();
@@ -1212,11 +1353,14 @@ function startRound(clip, rewind) {
 // no vote is no score — but the truth still goes back on screen
 function autoReveal() {
   if (!game.round.eligible || game.round.revealed) return;
+  clearTimeout(game.timer); game.timer = null;
   game.round.revealed = true;
+  if (game.round.clipId != null && !game.played.has(game.round.clipId)) {
+    game.played.set(game.round.clipId, { voted: null, correct: null });
+  }
   renderProvenance(); renderStrip(); renderGame();
 }
 function castVote(answer) {
-  if (!game.on) return;
   const r = game.round;
   if (!r.eligible || r.revealed || r.voted) return;
   clearTimeout(game.timer); game.timer = null;
@@ -1229,51 +1373,47 @@ function castVote(answer) {
     game.score.streak++;
     if (game.score.streak > game.score.best) game.score.best = game.score.streak;
   } else game.score.streak = 0;
+  game.played.set(r.clipId, { voted: r.voted, correct: r.correct });
+  if (game.played.size > 200) game.played.delete(game.played.keys().next().value);
   saveGame();
   renderProvenance(); renderStrip(); renderGame();
   toast((r.correct ? '✓ Correct — ' : '✗ Not quite — ') + truthLabel(r.truth), r.correct ? 'ok' : 'err');
 }
-function setGame(on) {
-  game.on = !!on;
-  clearTimeout(game.timer); game.timer = null;
-  saveGame();
-  if (gameMasking()) game.timer = setTimeout(autoReveal, GAME_REVEAL_MS);
-  renderProvenance(); renderGame(); renderStrip();
-}
 function renderGame() {
-  const t = $('gameToggle');
-  t.classList.toggle('on', game.on);
-  t.setAttribute('aria-pressed', game.on ? 'true' : 'false');
-  t.textContent = game.on ? '◉ Game on — switch off' : '▢ Play “Real or AI?”';
-  $('gameLive').style.display = game.on ? 'block' : 'none';
-
   const r = game.round;
-  const canVote = game.on && r.eligible && !r.revealed;
-  $('voteReal').disabled = !canVote;
-  $('voteAi').disabled = !canVote;
+  const canVote = r.eligible && !r.revealed;
 
-  const res = $('gameResult');
-  res.className = 'gameresult';
-  if (!r.clipId) res.textContent = 'Waiting for a clip to tune in…';
-  else if (!r.eligible) res.textContent = 'Viewer upload — it sits this round out. The next clip counts.';
-  else if (canVote) res.textContent = 'On air now: genuine archival footage, or machine-made? Call it.';
+  // ---- overlay on the picture ----
+  const vr = $('voteReal'), va = $('voteAi');
+  vr.disabled = !canVote; va.disabled = !canVote;
+  vr.classList.toggle('picked', r.voted === 'real');
+  va.classList.toggle('picked', r.voted === 'ai');
+  $('gameOver').dataset.state = !r.clipId ? 'waiting' : !r.eligible ? 'out' : canVote ? 'open' : 'done';
+  $('goLbl').textContent = canVote ? 'REAL OR AI?' : !r.eligible ? 'REAL OR AI?' : 'CALLED';
+
+  const res = $('goResult');
+  res.className = 'gores';
+  if (!r.clipId) res.textContent = 'tuning in…';
+  else if (!r.eligible) res.textContent = 'viewer upload — sits this one out';
+  else if (canVote) res.textContent = 'call it before the clip ends';
   else if (r.voted) {
-    res.className = 'gameresult ' + (r.correct ? 'ok' : 'bad');
-    res.innerHTML = (r.correct ? '✓ Correct — ' : '✗ Not quite — ') +
-      `this clip is <b>${truthLabel(r.truth)}</b>. The labels are back on screen.`;
+    res.className = 'gores ' + (r.correct ? 'ok' : 'bad');
+    res.textContent = (r.correct ? '✓ correct — ' : '✗ wrong — ') + truthShort(r.truth);
   } else {
-    res.innerHTML = `Labels restored — this clip is <b>${truthLabel(r.truth)}</b>. No vote, no point.`;
+    res.textContent = '⏱ revealed — ' + truthShort(r.truth);
   }
 
   const s = game.score;
   const acc = s.total ? Math.round((s.correct / s.total) * 100) : 0;
+  $('goScore').textContent = `${s.correct}/${s.total} · streak ${s.streak}`;
+
+  // ---- scoreboard panel ----
   $('gameScore').innerHTML =
     `<span>score <b>${s.correct}/${s.total}</b></span>` +
     `<span>accuracy <b>${acc}%</b></span>` +
     `<span>streak <b>${s.streak}</b></span>` +
     `<span>best <b>${s.best}</b></span>`;
 }
-$('gameToggle').onclick = () => setGame(!game.on);
 $('voteReal').onclick = () => castVote('real');
 $('voteAi').onclick = () => castVote('ai');
 $('gameReset').onclick = () => {
@@ -1309,7 +1449,16 @@ async function tune(force = false) {
     renderStrip();
   } catch { setTimeout(() => tune(true), 3000); }
 }
-player.addEventListener('ended', () => { if (dvr.active) dvrNext(); else tune(true); });
+// LEGAL BACKSTOP: the label is back on screen before the clip runs out, always
+player.addEventListener('timeupdate', () => {
+  if (!gameMasking()) return;
+  const d = player.duration;
+  if (Number.isFinite(d) && d > 0 && d - player.currentTime <= GAME_END_LEAD_S) autoReveal();
+});
+player.addEventListener('ended', () => {
+  autoReveal();
+  if (dvr.active) dvrNext(); else tune(true);
+});
 player.addEventListener('error', () => {
   if (dvr.active) { toast('That clip would not play — back to live.', 'err'); backToLive(); return; }
   setTimeout(() => tune(true), 2000);
@@ -1551,6 +1700,16 @@ $('reportBtn').onclick = () => reportClip();
 const stage = $('stage'), chatDock = $('chatDock');
 const mainCol = document.querySelector('.main'), tvbtns = document.querySelector('.tvbtns');
 
+/* Fullscreen has three shapes and the code has to know which one it is in:
+   'native' — Element.requestFullscreen worked (desktop, Android Chrome)
+   'pseudo' — CSS pins the player to the viewport (iPhone Safari, where the
+              container API does not exist; overlays keep working)
+   'video'  — the raw <video> went fullscreen on its own (iOS native controls);
+              no overlay can composite on top, so we only track it to stay honest */
+const fsState = { mode: 'off', scrollY: 0 };
+function nativeFsEl() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
+function isFs() { return fsState.mode !== 'off'; }
+
 /* ---------------------------------------------------------------
    phone layout — sticky section tabs, and chrome that moves off the
    picture when there is not enough width for it to sit on top
@@ -1584,6 +1743,7 @@ setMobileTab(startTab, false);
 // picture — so the cluster rides below it, and returns for landscape/fullscreen
 // the sticky tab bar parks directly under the picture, so it needs its height
 function measureTv() {
+  if (isFs()) return;                    // pinned to the viewport: not a real layout measurement
   const root = document.documentElement;
   const h = Math.round(tv.getBoundingClientRect().height);
   if (h > 0) root.style.setProperty('--tvh', h + 'px');
@@ -1609,8 +1769,11 @@ document.addEventListener('focusout', () => {
   setTimeout(() => { if (!typey(document.activeElement)) document.body.classList.remove('kbdopen'); }, 80);
 });
 
+// six 44px buttons do not fit on a phone-width picture, so the cluster rides
+// below it — but in any kind of fullscreen it has to be back on the picture,
+// because nothing outside the player is on screen (or reachable) any more
 function syncControlsPlacement() {
-  const below = mqPhone.matches && !mqLandPhone.matches && fsEl() !== tv;
+  const below = mqPhone.matches && !mqLandPhone.matches && !isFs();
   const target = below ? $('mobileControls') : $('tvui');
   if (tvbtns.parentElement !== target) target.appendChild(tvbtns);
 }
@@ -1626,38 +1789,100 @@ function setCinema(on, persist = true) {
   chatScrollToBottom();
 }
 
-const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-function toggleFullscreen() {
-  try {
-    if (fsEl()) {
-      const exit = document.exitFullscreen || document.webkitExitFullscreen;
-      if (exit) { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); }
-      return;
-    }
+// ---- pseudo-fullscreen: pure CSS, so the overlay layer survives ----
+function applyPseudoFs(on) {
+  tv.classList.toggle('pfs', on);
+  document.documentElement.classList.toggle('pfslock', on);
+  document.body.classList.toggle('pfslock', on);
+}
+function enterPseudoFs() {
+  if (isFs()) return;
+  fsState.scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+  fsState.mode = 'pseudo';
+  applyPseudoFs(true);
+  afterFsChange();
+}
+function exitPseudoFs() {
+  if (fsState.mode !== 'pseudo') return;
+  const y = fsState.scrollY;
+  applyPseudoFs(false);
+  fsState.mode = 'off';
+  afterFsChange();
+  try { window.scrollTo(0, y); } catch {}
+}
+
+function nativeFsUsable() {
+  if (!(tv.requestFullscreen || tv.webkitRequestFullscreen)) return false;
+  // an iframe without allow="fullscreen" reports false here; iPhone Safari has no API at all
+  if (document.fullscreenEnabled === false) return false;
+  if (document.webkitFullscreenEnabled === false) return false;
+  return true;
+}
+
+function enterFullscreen() {
+  if (isFs()) return;
+  if (nativeFsUsable()) {
     const req = tv.requestFullscreen || tv.webkitRequestFullscreen;
-    if (!req) { videoFullscreen(); return; }
-    const p = req.call(tv);
-    if (p && p.catch) p.catch(() => videoFullscreen());
-  } catch { videoFullscreen(); }
+    try {
+      const p = req.call(tv, { navigationUI: 'hide' });
+      if (p && typeof p.catch === 'function') p.catch(() => { if (!isFs()) enterPseudoFs(); });
+    } catch { enterPseudoFs(); return; }
+    // some engines neither resolve nor fire the event — never leave the button lying
+    setTimeout(() => { if (!isFs()) enterPseudoFs(); }, 450);
+    return;
+  }
+  enterPseudoFs();
 }
-// iOS Safari: the container API is missing or refuses — the <video> has its own
-function videoFullscreen() {
+
+function leaveFullscreen() {
+  if (fsState.mode === 'pseudo') { exitPseudoFs(); return; }
+  if (fsState.mode === 'video') { exitVideoFullscreen(); fsState.mode = 'off'; afterFsChange(); return; }
+  if (fsState.mode === 'native') {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    try {
+      const p = exit && exit.call(document);
+      if (p && typeof p.catch === 'function') p.catch(() => { fsState.mode = 'off'; afterFsChange(); });
+    } catch { fsState.mode = 'off'; afterFsChange(); return; }
+    setTimeout(() => {
+      if (fsState.mode === 'native' && nativeFsEl() !== tv) { fsState.mode = 'off'; afterFsChange(); }
+    }, 450);
+  }
+}
+function toggleFullscreen() { isFs() ? leaveFullscreen() : enterFullscreen(); }
+
+// iOS puts the raw <video> fullscreen from its own controls — no overlay can sit
+// on top of that, so we only mirror the state and get back cleanly afterwards
+function exitVideoFullscreen() {
   try {
-    if (typeof player.webkitEnterFullscreen === 'function') { player.webkitEnterFullscreen(); return; }
-    if (typeof player.webkitSetPresentationMode === 'function') {
-      player.webkitSetPresentationMode('fullscreen'); return;
-    }
+    if (typeof player.webkitExitFullscreen === 'function') { player.webkitExitFullscreen(); return; }
+    if (typeof player.webkitSetPresentationMode === 'function') player.webkitSetPresentationMode('inline');
   } catch {}
-  toast('This browser will not let the video go fullscreen.');
 }
+player.addEventListener('webkitbeginfullscreen', () => {
+  if (fsState.mode === 'pseudo') exitPseudoFs();
+  fsState.mode = 'video';
+  afterFsChange();
+});
+player.addEventListener('webkitendfullscreen', () => {
+  if (fsState.mode !== 'video') return;
+  fsState.mode = 'off';
+  afterFsChange();
+  renderMute();                       // iOS can flip muted/paused on the way out
+  if (!dvr.active && player.paused) player.play().catch(() => {});
+});
+
 $('fsBtn').onclick = toggleFullscreen;
 $('cinemaBtn').onclick = () => setCinema(!isCinema());
 
 // in fullscreen the chat rides along as a floating column over the video
 function syncChatPlacement() {
-  // phone: chat lives in its own tab below the tab bar, not beside the picture
+  // phone: chat lives in its own tab below the tab bar, not beside the picture.
+  // It only rides into the player when there is genuinely room for a column —
+  // a 140px strip over a portrait phone helps nobody, and every move of this
+  // node is a chance to strand it, so we make as few as possible.
   const phone = mqPhone.matches && !mqLandPhone.matches;
-  const target = fsEl() === tv ? tv : phone ? mainCol : stage;
+  const overTv = isFs() && window.innerWidth > 760;
+  const target = overTv ? tv : phone ? mainCol : stage;
   const anchor = $('mtabs');
   const placed = chatDock.parentElement === target &&
     (target !== mainCol || chatDock.previousElementSibling === anchor);
@@ -1666,11 +1891,15 @@ function syncChatPlacement() {
     else target.appendChild(chatDock);
   }
   // chat floating over the picture? then keep the chyron + buttons clear of it
-  tv.classList.toggle('chatover', fsEl() === tv || (isCinema() && window.innerWidth > 760));
+  tv.classList.toggle('chatover', chatDock.parentElement === tv ||
+                                 (isCinema() && window.innerWidth > 760));
 }
 function syncLayout() { syncChatPlacement(); syncControlsPlacement(); measureTv(); }
 window.addEventListener('resize', syncLayout);
-window.addEventListener('orientationchange', syncLayout);
+window.addEventListener('orientationchange', () => { syncLayout(); setTimeout(syncLayout, 300); });
+if (screen.orientation && screen.orientation.addEventListener) {
+  screen.orientation.addEventListener('change', () => { syncLayout(); setTimeout(syncLayout, 300); });
+}
 if (mqPhone.addEventListener) {
   mqPhone.addEventListener('change', syncLayout);
   mqLandPhone.addEventListener('change', syncLayout);
@@ -1685,7 +1914,8 @@ function typingInChat() {
 function showTvUi() {
   tv.classList.remove('uihidden');
   clearTimeout(hideTimer);
-  if (fsEl() === tv) {
+  // never auto-hide on a touch screen: the exit control has to stay findable
+  if (isFs() && !isTouch()) {
     hideTimer = setTimeout(() => {
       if (!overControl && !typingInChat()) tv.classList.add('uihidden');
     }, 3000);
@@ -1698,19 +1928,38 @@ for (const el of [document.querySelector('.tvbtns'), chatDock]) {
   el.addEventListener('mouseenter', () => { overControl = true; showTvUi(); });
   el.addEventListener('mouseleave', () => { overControl = false; showTvUi(); });
 }
-function onFsChange() {
-  const on = fsEl() === tv;
+// the single place the button label, the layout and the auto-hide are reconciled
+// with whatever mode we are actually in — every entry and exit path lands here
+function afterFsChange() {
+  const on = isFs();
   const b = $('fsBtn');
-  tvBtnLabel('fsBtn', '⛶', on ? 'exit fullscreen' : 'fullscreen',
+  tvBtnLabel('fsBtn', on ? '⤢' : '⛶', on ? 'exit fullscreen' : 'fullscreen',
              on ? 'leave fullscreen (f)' : 'fullscreen (f)');
   b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  document.body.classList.toggle('isfs', on);
   syncLayout();
   if (!on) { clearTimeout(hideTimer); tv.classList.remove('uihidden'); }
   else showTvUi();
   chatScrollToBottom();
 }
-document.addEventListener('fullscreenchange', onFsChange);
-document.addEventListener('webkitfullscreenchange', onFsChange);
+function onNativeFsChange() {
+  if (nativeFsEl() === tv) {
+    if (fsState.mode === 'pseudo') applyPseudoFs(false);   // native won the race
+    fsState.mode = 'native';
+  } else if (fsState.mode === 'native') {
+    fsState.mode = 'off';
+  }
+  afterFsChange();
+}
+document.addEventListener('fullscreenchange', onNativeFsChange);
+document.addEventListener('webkitfullscreenchange', onNativeFsChange);
+// Escape only leaves native fullscreen on its own — pseudo needs to be told
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && fsState.mode === 'pseudo' &&
+      !$('modal').classList.contains('show') && !$('gate').classList.contains('show')) {
+    e.preventDefault(); exitPseudoFs();
+  }
+});
 
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1725,9 +1974,9 @@ document.addEventListener('keydown', (e) => {
   else if (k === 'c') { e.preventDefault(); setCinema(!isCinema()); }
   else if (k === 'arrowleft') { e.preventDefault(); dvrPrev(); }
   else if (k === 'arrowright') { e.preventDefault(); dvrNext(); }
-  // real-or-AI votes — only while the game is on, never while typing
-  else if (k === 'r' && game.on) { e.preventDefault(); castVote('real'); }
-  else if (k === 'a' && game.on) { e.preventDefault(); castVote('ai'); }
+  // real-or-AI votes — desktop only (touch devices bail out above), never while typing
+  else if (k === 'r') { e.preventDefault(); castVote('real'); }
+  else if (k === 'a') { e.preventDefault(); castVote('ai'); }
 });
 
 // dismissible shortcut hint
@@ -1795,10 +2044,10 @@ function chatAuthState(signedIn) {
     g.innerHTML = 'chatting as a <b>guest</b> — ' +
       '<button type="button" class="linkish" id="chatSignIn">sign in</button> to use your name.';
     $('chatSignIn').onclick = () => {
+      if (isFs()) leaveFullscreen();
       if (isCinema()) setCinema(false);
-      $('acctPanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
       setAuthMode('login');
-      setTimeout(() => $('email').focus(), 260);
+      openAccountModal();
     };
   }
 }
@@ -2157,6 +2406,7 @@ async function refresh() {
     chatAuthState(!!s.user);
 
     // account
+    renderAcctBtn();
     $('loggedIn').style.display = s.user ? 'block' : 'none';
     $('loggedOut').style.display = s.user ? 'none' : 'block';
     if (s.user) {
@@ -2244,7 +2494,7 @@ async function refresh() {
   } catch {}
 }
 
-setMode('show'); setAuthMode('login');
+setMode('show'); setAuthMode('login'); renderAcctBtn();
 tune(true); refresh(); loadRecent();
 setInterval(refresh, 5000);
 setInterval(loadRecent, 15000);
