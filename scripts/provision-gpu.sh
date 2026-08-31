@@ -78,7 +78,7 @@ AMI=$(aws ssm get-parameter \
   --query Parameter.Value --output text)
 echo "ami=$AMI"
 
-WORKER_B64=$(base64 -w0 "$ROOT/gpu-worker/worker.py")
+WORKER_B64=$(gzip -9 -c "$ROOT/gpu-worker/worker.py" | base64 -w0)
 REQS=$(cat "$ROOT/gpu-worker/requirements.txt")
 
 USERDATA=$(base64 -w0 <<EOF
@@ -86,7 +86,7 @@ USERDATA=$(base64 -w0 <<EOF
 exec > /var/log/mc-setup.log 2>&1
 set -x
 mkdir -p /opt/mc && cd /opt/mc
-echo "$WORKER_B64" | base64 -d > worker.py
+echo "$WORKER_B64" | base64 -d | gunzip > worker.py
 cat > requirements.txt <<'REQEOF'
 $REQS
 REQEOF
@@ -148,6 +148,13 @@ touch /tmp/mc-last-activity
 EOF
 )
 
+UD_BYTES=$(printf %s "$USERDATA" | wc -c)
+if [ "$UD_BYTES" -gt 25600 ]; then
+  echo "ERROR: user-data is $UD_BYTES bytes, over EC2's 25600 limit" >&2
+  exit 1
+fi
+echo "user-data: $UD_BYTES/25600 bytes"
+
 MARKET_ARGS=()
 if [ "$MARKET" = "spot" ]; then
   MARKET_ARGS=(--instance-market-options 'MarketType=spot,SpotOptions={SpotInstanceType=persistent,InstanceInterruptionBehavior=stop}')
@@ -172,7 +179,7 @@ for PAIR in $SUBNETS; do
   tail -1 /tmp/mc-launch-err
   IIDS=""
 done
-[ -z "$IIDS" ] && { echo "ERROR: no AZ had $COUNT x $ITYPE capacity"; exit 1; }
+[ -z "$IIDS" ] && { echo "ERROR: launch failed in every AZ; last error above"; exit 1; }
 
 echo "instances: $IIDS"
 
