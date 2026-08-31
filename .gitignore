@@ -9,3 +9,4 @@ gpu-worker/.venv/
 *.pem
 docs/hostinger-env.txt
 promo/
+supabase/.temp/
