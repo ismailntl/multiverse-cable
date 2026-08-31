@@ -1,0 +1,9 @@
+torch
+diffusers>=0.32
+transformers
+accelerate
+sentencepiece
+imageio[ffmpeg]
+fastapi
+uvicorn
+pydantic>=2

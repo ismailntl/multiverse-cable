@@ -1,0 +1,9 @@
+node_modules/
+videos/*.mp4
+data/state.json
+data/worker.json
+data/instance.json
+data/*.log
+.env
+gpu-worker/.venv/
+*.pem

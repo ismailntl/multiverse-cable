@@ -1,0 +1,18 @@
+{
+  "name": "multiverse-cable",
+  "version": "0.1.0",
+  "description": "24/7 AI-generated TV channel powered by MiniMax H3 — viewers bid to program the next slot",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "GEN_INTERVAL_SEC=20 node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.60.0",
+    "stripe": "^22.6.0"
+  }
+}

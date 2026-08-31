@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multiverse Cable</title>
+<style>
+  :root {
+    --green: #3dff8b; --amber: #ffc857; --pink: #ff5ec7; --cyan: #4de2ff;
+    --bg: #05060a; --panel: #0d1017; --line: #1d2230; --text: #d7e0ea; --dim: #6b7688;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text); min-height: 100vh;
+    font-family: "Courier New", ui-monospace, monospace;
+    background-image: radial-gradient(circle at 20% 0%, #16203a 0%, transparent 45%),
+                      radial-gradient(circle at 85% 10%, #2a1030 0%, transparent 40%);
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 18px; }
+
+  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+  h1 {
+    margin: 0; font-size: 30px; letter-spacing: 4px;
+    background: linear-gradient(90deg, var(--green), var(--cyan), var(--pink));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: hue 8s linear infinite;
+  }
+  @keyframes hue { to { filter: hue-rotate(360deg); } }
+  header .sub { color: var(--dim); font-size: 13px; }
+  .ticker {
+    overflow: hidden; white-space: nowrap; border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line); margin: 10px 0 16px; padding: 6px 0;
+    font-size: 12px; color: var(--amber); background: #0a0d14;
+  }
+  .ticker span { display: inline-block; padding-left: 100%; animation: slide 42s linear infinite; }
+  @keyframes slide { to { transform: translateX(-100%); } }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(300px, 1fr); gap: 16px; }
+  @media (max-width: 940px) { .layout { grid-template-columns: 1fr; } }
+
+  .tv { position: relative; background: #000; border: 3px solid #222a38; border-radius: 14px; overflow: hidden;
+        box-shadow: 0 0 40px #3dff8b18, inset 0 0 60px #000; }
+  .tv video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; }
+  .tv .scanlines { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay; opacity: .45;
+    background: repeating-linear-gradient(0deg, #000 0 1px, transparent 1px 3px); }
+  .tv .static { position: absolute; inset: 0; display: none; pointer-events: none;
+    background: repeating-conic-gradient(#111 0% .0001%, #999 .0001% .0002%);
+    filter: contrast(1.7); animation: flick .08s steps(2) infinite; }
+  @keyframes flick { to { transform: translateY(2px) } }
+  .tv.tuning .static { display: block; }
+  .badge {
+    position: absolute; top: 12px; left: 12px; font-size: 11px; letter-spacing: 2px;
+    background: #c0182d; color: #fff; padding: 4px 9px; border-radius: 3px; font-weight: bold;
+  }
+  .badge.ad { background: var(--amber); color: #201400; }
+  .badge.archive { background: #4a5568; }
+  .chyron { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 14px;
+    background: linear-gradient(transparent, #000d); display: flex; justify-content: space-between;
+    align-items: baseline; gap: 10px; font-size: 14px; }
+  .chyron .title { color: var(--green); font-weight: bold; letter-spacing: 1px; }
+  .chyron .ch { color: var(--amber); }
+  .chyron .credit { color: var(--dim); font-size: 12px; }
+  .tvbtns { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
+  .tvbtns button { background: #000a; color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 10px; cursor: pointer; font-family: inherit; font-size: 12px; }
+  .tvbtns button:hover { border-color: var(--green); color: var(--green); }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+  .panel h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: 2px; color: var(--amber); text-transform: uppercase; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tabs button { flex: 1; background: #070a10; border: 1px solid var(--line); color: var(--dim);
+    padding: 7px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; letter-spacing: 1px; }
+  .tabs button.on { border-color: var(--green); color: var(--green); background: #0a1710; }
+
+  form { display: grid; gap: 8px; }
+  input, textarea, select {
+    width: 100%; background: #070a10; border: 1px solid var(--line); border-radius: 6px;
+    color: var(--text); padding: 9px 10px; font-family: inherit; font-size: 13px;
+  }
+  textarea { resize: vertical; min-height: 58px; }
+  button.go { background: linear-gradient(90deg, var(--green), var(--cyan)); color: #04140a; font-weight: bold;
+    border: 0; border-radius: 6px; padding: 11px; cursor: pointer; font-family: inherit; letter-spacing: 1px; }
+  button.go:hover { filter: brightness(1.12); }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--dim);
+    border-radius: 6px; padding: 8px; cursor: pointer; font-family: inherit; font-size: 12px; }
+  .msg { font-size: 12px; color: var(--dim); min-height: 15px; line-height: 1.4; }
+  .msg.ok { color: var(--green); } .msg.err { color: #ff6b6b; }
+  .row { display: flex; gap: 8px; } .row > * { flex: 1; }
+
+  ul.list { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  ul.list li { padding: 7px 0; border-bottom: 1px dashed var(--line); display: flex; gap: 8px; justify-content: space-between; }
+  ul.list li:last-child { border-bottom: 0; }
+  ul.list .who { color: var(--amber); white-space: nowrap; }
+  ul.list .what { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  ul.list .amt { color: var(--green); white-space: nowrap; }
+  .stats { font-size: 12px; color: var(--dim); line-height: 1.8; }
+  .stats b { color: var(--text); }
+  .wallet { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 10px; }
+  .wallet .credits { color: var(--green); font-size: 20px; font-weight: bold; }
+  .packs { display: grid; gap: 6px; }
+  .packs button { background: #070a10; border: 1px solid var(--line); color: var(--text);
+    padding: 9px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; text-align: left; }
+  .packs button:hover { border-color: var(--amber); }
+  .nextslot { font-size: 13px; } .nextslot .idea { color: var(--text); }
+  footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line);
+    font-size: 11px; color: var(--dim); display: flex; gap: 16px; flex-wrap: wrap; }
+  footer a { color: var(--dim); }
+
+  /* age gate */
+  #gate { position: fixed; inset: 0; background: #05060af2; z-index: 50; display: none;
+    align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(6px); }
+  #gate.show { display: flex; }
+  #gate .card { max-width: 480px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 24px; }
+  #gate h2 { color: var(--amber); letter-spacing: 2px; margin: 0 0 12px; font-size: 15px; }
+  #gate p { font-size: 13px; line-height: 1.6; color: var(--text); }
+  #gate .warn { color: var(--pink); }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="card">
+    <h2>⚠ BEFORE YOU TUNE IN</h2>
+    <p><b>This channel broadcasts AI-generated content 24/7 with no human reviewing
+    each clip before it airs.</b></p>
+    <p class="warn">It may contain surreal, absurd, or <b>mature content</b> unsuitable
+    for minors. You must be <b>18 or older</b> to watch.</p>
+    <p>Every clip is machine-generated fiction. Any resemblance to real people,
+    brands, or events is unintended — report anything that slips through and it
+    comes off air immediately.</p>
+    <div class="row" style="margin-top:16px">
+      <button class="go" id="gateYes">I AM 18+ — TUNE IN</button>
+      <button class="ghost" id="gateNo">LEAVE</button>
+    </div>
+    <div class="msg" style="margin-top:8px">Your confirmation is recorded with a timestamp.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <header>
+    <h1>▚ MULTIVERSE CABLE</h1>
+    <span class="sub">∞ channels · one broadcast · bid to program the next dimension</span>
+  </header>
+  <div class="ticker"><span id="tickerText">TUNING INTO THE SIGNAL…</span></div>
+
+  <div class="layout">
+    <div>
+      <div class="tv tuning" id="tv">
+        <video id="player" autoplay muted playsinline></video>
+        <div class="scanlines"></div>
+        <div class="static"></div>
+        <div class="badge" id="badge">● LIVE</div>
+        <div class="tvbtns">
+          <button id="muteBtn">🔇 unmute</button>
+          <button id="skipBtn" title="jump to whatever is on now">⏭ resync</button>
+          <button id="reportBtn" title="report this clip">⚑ report</button>
+        </div>
+        <div class="chyron">
+          <span><span class="ch" id="ch">CH ---</span> &nbsp; <span class="title" id="title">TUNING…</span></span>
+          <span class="credit" id="credit"></span>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:14px">
+        <h2>Recently materialized</h2>
+        <ul class="list" id="recent"></ul>
+      </div>
+    </div>
+
+    <div>
+      <!-- account -->
+      <div class="panel" id="acctPanel">
+        <h2 id="acctTitle">Your account</h2>
+        <div id="loggedOut">
+          <div class="tabs">
+            <button id="tabLogin" class="on">SIGN IN</button>
+            <button id="tabSignup">CREATE ACCOUNT</button>
+          </div>
+          <form id="authForm" onsubmit="return false">
+            <input id="email" type="email" placeholder="email" autocomplete="email">
+            <input id="password" type="password" placeholder="password (8+ chars)" autocomplete="current-password">
+            <div id="signupExtras" style="display:none">
+              <label class="msg"><input type="checkbox" id="ageConfirmed" style="width:auto"> I confirm I am 18 or older</label>
+              <label class="msg"><input type="checkbox" id="termsAccepted" style="width:auto"> I accept the <a href="/policy" target="_blank">content policy</a> and understand clips are AI-generated and may include mature content</label>
+            </div>
+            <button class="go" id="authBtn">SIGN IN</button>
+            <div class="msg" id="authMsg"></div>
+          </form>
+        </div>
+        <div id="loggedIn" style="display:none">
+          <div class="wallet">
+            <span><span id="userEmail" class="who"></span><br><span class="msg">broadcast credits</span></span>
+            <span class="credits" id="credits">0</span>
+          </div>
+          <div class="packs" id="packs"></div>
+          <div class="msg" id="buyMsg"></div>
+          <button class="ghost" id="logoutBtn" style="margin-top:8px">sign out</button>
+        </div>
+      </div>
+
+      <!-- bidding -->
+      <div class="panel">
+        <h2>Bid for the next slot</h2>
+        <div class="tabs">
+          <button id="tabShow" class="on">📺 SHOW</button>
+          <button id="tabAd">📣 AD</button>
+        </div>
+        <form id="bidForm" onsubmit="return false">
+          <div id="adFields" style="display:none">
+            <input id="brand" maxlength="40" placeholder="fictional brand name (e.g. GlorpCo)">
+            <input id="product" maxlength="80" placeholder="what it sells (e.g. sentient mattresses)">
+            <input id="cta" maxlength="80" placeholder="call to action (e.g. 'Call now, dimension 7')">
+          </div>
+          <textarea id="idea" maxlength="300" placeholder="what should air? e.g. 'a cooking show where the ingredients cook the chef'"></textarea>
+          <select id="genre"><option value="">genre: surprise me</option></select>
+          <input id="amount" type="number" min="1" step="1" placeholder="bid (credits) — highest wins next slot">
+          <button class="go" id="bidBtn">PLACE BID</button>
+          <div class="msg" id="bidMsg">Original characters only — no real people, brands, or franchises.</div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Next slot goes to</h2>
+        <div class="nextslot" id="nextslot">nobody yet — the machine picks a random dimension</div>
+      </div>
+
+      <div class="panel">
+        <h2>Bid board</h2>
+        <ul class="list" id="bids"><li><span class="what">no pending bids</span></li></ul>
+      </div>
+
+      <div class="panel">
+        <h2>Transmission stats</h2>
+        <div class="stats" id="stats">…</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>AI-generated · 18+ · no human pre-review</span>
+    <a href="/policy" target="_blank">content &amp; copyright policy</a>
+    <span id="dmcaLink" style="cursor:pointer;text-decoration:underline">report a clip / DMCA</span>
+  </footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const player = $('player'), tv = $('tv');
+let currentClipId = null, mode = 'show', authMode = 'login', state = {};
+
+async function api(url, opts) {
+  const r = await fetch(url, opts);
+  const b = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(b.error || ('HTTP ' + r.status));
+  return b;
+}
+const esc = (s) => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
+
+// ---- age gate (recorded locally; account signup records it server-side) ----
+if (!localStorage.getItem('ic_age_ok')) $('gate').classList.add('show');
+$('gateYes').onclick = () => {
+  localStorage.setItem('ic_age_ok', new Date().toISOString());
+  $('gate').classList.remove('show');
+  player.play().catch(() => {});
+};
+$('gateNo').onclick = () => { location.href = 'https://www.google.com'; };
+
+// ---- the broadcast ----
+async function tune(force = false) {
+  try {
+    const { now } = await api('/api/now');
+    if (!now) { setTimeout(() => tune(), 3000); return; }
+    if (!force && now.clip.id === currentClipId) return;
+    currentClipId = now.clip.id;
+    tv.classList.add('tuning');
+    $('ch').textContent = 'CH ' + now.clip.channel;
+    $('title').textContent = (now.clip.title || '').toUpperCase();
+    const b = $('badge');
+    b.className = 'badge' + (now.clip.isAd ? ' ad' : now.clip.source === 'archive' ? ' archive' : '');
+    b.textContent = now.clip.isAd ? '📣 PAID AD' : now.clip.source === 'archive' ? '▣ FOUND FOOTAGE' : '● LIVE';
+    $('credit').textContent =
+      now.clip.source === 'ad' ? `paid slot · ${now.clip.bidder}` :
+      now.clip.source === 'bid' ? `programmed by ${now.clip.bidder} · ${now.clip.amount}cr` :
+      now.clip.source === 'archive' ? 'public domain archives' : 'auto-transmission';
+    player.src = '/videos/' + now.clip.file;
+    player.currentTime = Math.max(0, now.offset);
+    await player.play().catch(() => {});
+    setTimeout(() => tv.classList.remove('tuning'), 350);
+  } catch { setTimeout(() => tune(true), 3000); }
+}
+player.addEventListener('ended', () => tune(true));
+player.addEventListener('error', () => setTimeout(() => tune(true), 2000));
+$('muteBtn').onclick = () => {
+  player.muted = !player.muted;
+  $('muteBtn').textContent = player.muted ? '🔇 unmute' : '🔊 mute';
+  if (!player.muted) player.play().catch(() => {});
+};
+$('skipBtn').onclick = () => tune(true);
+$('reportBtn').onclick = () => reportClip();
+
+// ---- auth ----
+function setAuthMode(m) {
+  authMode = m;
+  $('tabLogin').classList.toggle('on', m === 'login');
+  $('tabSignup').classList.toggle('on', m === 'signup');
+  $('signupExtras').style.display = m === 'signup' ? 'block' : 'none';
+  $('authBtn').textContent = m === 'signup' ? 'CREATE ACCOUNT' : 'SIGN IN';
+}
+$('tabLogin').onclick = () => setAuthMode('login');
+$('tabSignup').onclick = () => setAuthMode('signup');
+
+$('authBtn').onclick = async () => {
+  const m = $('authMsg'); m.className = 'msg';
+  try {
+    const body = { email: $('email').value, password: $('password').value };
+    if (authMode === 'signup') {
+      body.ageConfirmed = $('ageConfirmed').checked;
+      body.termsAccepted = $('termsAccepted').checked;
+    }
+    await api('/api/' + (authMode === 'signup' ? 'signup' : 'login'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    m.textContent = '✓ welcome to the signal'; m.className = 'msg ok';
+    $('password').value = '';
+    refresh();
+  } catch (e) { m.textContent = '✗ ' + e.message; m.className = 'msg err'; }
+};
+$('logoutBtn').onclick = async () => { await api('/api/logout', { method: 'POST' }); refresh(); };
+
+// ---- credits ----
+async function buy(packId) {
+  const m = $('buyMsg'); m.className = 'msg';
+  try {
+    const r = await api('/api/checkout', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ packId }),
+    });
+    if (r.url) { location.href = r.url; return; }
+    m.textContent = r.message || 'credits added'; m.className = 'msg ok';
+    refresh();
+  } catch (e) { m.textContent = '✗ ' + e.message; m.className = 'msg err'; }
+}
+
+// ---- bidding ----
+function setMode(m) {
+  mode = m;
+  $('tabShow').classList.toggle('on', m === 'show');
+  $('tabAd').classList.toggle('on', m === 'ad');
+  $('adFields').style.display = m === 'ad' ? 'block' : 'none';
+  $('idea').placeholder = m === 'ad'
+    ? "the ad's premise, e.g. 'the mattress absorbs your regrets while a spokesman weeps with joy'"
+    : "what should air? e.g. 'a cooking show where the ingredients cook the chef'";
+  $('bidBtn').textContent = m === 'ad' ? 'BUY THIS AD SLOT' : 'PLACE BID';
+}
+$('tabShow').onclick = () => setMode('show');
+$('tabAd').onclick = () => setMode('ad');
+
+$('bidBtn').onclick = async () => {
+  const m = $('bidMsg'); m.className = 'msg';
+  try {
+    const body = {
+      kind: mode, idea: $('idea').value, amount: Number($('amount').value),
+      genre: $('genre').value || undefined,
+    };
+    if (mode === 'ad') { body.brand = $('brand').value; body.product = $('product').value; body.cta = $('cta').value; }
+    const r = await api('/api/bid', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    m.textContent = `✓ bid placed — ${r.credits} credits left. Highest bid programs the next slot.`;
+    m.className = 'msg ok';
+    $('idea').value = ''; $('amount').value = '';
+    refresh();
+  } catch (e) { m.textContent = '✗ ' + e.message; m.className = 'msg err'; }
+};
+
+// ---- dmca ----
+async function reportClip() {
+  const clipId = currentClipId;
+  if (!clipId) return;
+  const claim = prompt('What is wrong with this clip? (copyright claim, or other issue)');
+  if (!claim) return;
+  const email = prompt('Your contact email (required for takedown requests):');
+  if (!email) return;
+  try {
+    const r = await api('/api/dmca', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clipId, claim, email, reporter: email }),
+    });
+    alert(`Report ${r.reportId} received.` + (r.removedFromAir ? ' The clip was pulled off air immediately.' : ''));
+    tune(true);
+  } catch (e) { alert('Report failed: ' + e.message); }
+}
+$('dmcaLink').onclick = reportClip;
+
+// ---- state polling ----
+async function refresh() {
+  try {
+    const s = await api('/api/state'); state = s;
+
+    // account
+    $('loggedIn').style.display = s.user ? 'block' : 'none';
+    $('loggedOut').style.display = s.user ? 'none' : 'block';
+    if (s.user) {
+      $('userEmail').textContent = s.user.email;
+      $('credits').textContent = s.user.credits;
+      if (!$('packs').dataset.filled) {
+        $('packs').dataset.filled = '1';
+        $('packs').innerHTML = '';
+        for (const p of s.packs) {
+          const btn = document.createElement('button');
+          btn.textContent = `${p.label} — $${(p.priceCents / 100).toFixed(2)}` + (s.stripeEnabled ? '' : ' (demo)');
+          btn.onclick = () => buy(p.id);
+          $('packs').appendChild(btn);
+        }
+      }
+    }
+
+    // genres
+    if (s.genres && !$('genre').dataset.filled) {
+      $('genre').dataset.filled = '1';
+      for (const g of s.genres) {
+        const o = document.createElement('option');
+        o.value = g.key; o.textContent = 'genre: ' + g.label.toLowerCase();
+        $('genre').appendChild(o);
+      }
+    }
+
+    $('nextslot').innerHTML = s.nextSlot
+      ? `<span class="who">${esc(s.nextSlot.name)}</span> · <span class="amt">${s.nextSlot.amount}cr</span>` +
+        `${s.nextSlot.kind === 'ad' ? ' · <b style="color:var(--amber)">PAID AD</b>' : ''}` +
+        `<br><span class="idea">“${esc(s.nextSlot.idea)}”</span>`
+      : 'nobody yet — the machine picks a random dimension';
+
+    $('bids').innerHTML = s.pendingBids.length
+      ? s.pendingBids.map(b =>
+          `<li><span class="who">${b.kind === 'ad' ? '📣' : '📺'} ${esc(b.name)}</span>` +
+          `<span class="what">${esc(b.idea)}</span><span class="amt">${b.amount}cr</span></li>`).join('')
+      : '<li><span class="what">no pending bids — be the first</span></li>';
+
+    $('recent').innerHTML = s.recentClips.map(c =>
+      `<li><span class="who">CH ${c.channel}</span><span class="what">${esc(c.title)}</span>` +
+      `<span class="amt">${c.source === 'ad' ? '📣 ad' : c.source === 'bid' ? esc(c.bidder) : c.source === 'archive' ? 'archives' : 'auto'}</span></li>`).join('');
+
+    $('stats').innerHTML =
+      `backend: <b>${esc(s.backend)}</b> · payments: <b>${s.stripeEnabled ? 'live' : 'demo'}</b><br>` +
+      `library: <b>${s.libraryClips}</b> clips<br>` +
+      `generated today: <b>${s.stats.generatedToday}</b><br>` +
+      `all-time: <b>${s.stats.generated}</b> (failed: ${s.stats.failed})<br>` +
+      `new clip every <b>${s.genIntervalSec}s</b>` +
+      (s.batch?.remaining ? `<br>🔥 batch burst: <b>${s.batch.remaining}</b> queued` : '');
+
+    $('tickerText').textContent =
+      (s.recentClips.map(c => `CH ${c.channel} — ${c.title}`).join('   ✦   ') || 'SIGNAL ACQUIRED') +
+      '   ✦   BID TO PROGRAM THE NEXT DIMENSION   ✦   ALL CONTENT AI-GENERATED, 18+';
+  } catch {}
+}
+
+setMode('show'); setAuthMode('login');
+tune(true); refresh();
+setInterval(refresh, 5000);
+setInterval(() => { if (player.paused || player.ended) tune(true); }, 30000);
+</script>
+</body>
+</html>
