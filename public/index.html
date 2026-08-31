@@ -61,7 +61,7 @@
   /* ---------- TV ---------- */
   .tv { position: relative; background: #000; border: 3px solid #222a38; border-radius: 14px; overflow: hidden;
         box-shadow: 0 0 40px #3dff8b18, inset 0 0 60px #000; }
-  .tv video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; }
+  .tv video { display: block; width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #000; }
   .tv .scanlines { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay; opacity: .35;
     background: repeating-linear-gradient(0deg, #000 0 1px, transparent 1px 3px); }
   .tv .static { position: absolute; inset: 0; display: none; pointer-events: none;
@@ -461,6 +461,181 @@
   .toast.err { border-left-color: var(--red); }
   @keyframes pop { from { opacity: 0; transform: translateY(8px); } }
 
+  /* ---------- "Real or AI?" game ---------- */
+  /* quiz badge: stands in for the provenance badge only until the vote resolves */
+  .badge.quiz { background: #2b1d5e; color: #e7dfff; box-shadow: inset 0 0 0 1px #7c4dff; }
+  .gametoggle { width: 100%; font-weight: 600; }
+  .gametoggle.on { border-color: var(--pink); color: var(--pink); background: #1e0a19; }
+  .gamevote { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .gbtn { display: grid; gap: 2px; justify-items: center; align-content: center; min-height: 58px;
+    cursor: pointer; border-radius: 10px; padding: 10px 8px; font-family: var(--ui); font-size: 16px;
+    font-weight: 700; letter-spacing: 1.2px; border: 1px solid var(--line); background: var(--panel-2);
+    color: var(--text); }
+  .gbtn small { font-family: var(--ui); font-size: 11px; font-weight: 500; letter-spacing: 0;
+                color: var(--faint); }
+  .gbtn.real:hover:not([disabled]) { border-color: var(--cyan); color: var(--cyan); }
+  .gbtn.ai:hover:not([disabled]) { border-color: #a98bff; color: #c9b6ff; }
+  .gbtn[disabled] { opacity: .45; cursor: default; }
+  .gameresult { margin-top: 12px; font-size: 13.5px; line-height: 1.5; border-radius: 8px;
+    padding: 10px 12px; border: 1px solid var(--line-soft); background: #0c121c; color: var(--dim); }
+  .gameresult.ok { border-color: #1d4430; background: #0d1e15; color: var(--green); }
+  .gameresult.bad { border-color: #4a2424; background: #221010; color: var(--red); }
+  .gameresult b { color: var(--text); }
+  .gamescore { margin-top: 10px; font-family: var(--mono); font-size: 12.5px; color: var(--dim);
+               display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .gamescore b { color: var(--text); }
+  .gamefoot { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+              margin-top: 10px; }
+  .gamefoot .legalnote { font-size: 12px; color: var(--faint); line-height: 1.45; }
+
+  /* ---------- tap for sound ---------- */
+  .unmutetap { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    z-index: 7; align-items: center; gap: 9px; min-height: 52px; padding: 13px 20px;
+    background: #06120cf0; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border: 1px solid var(--green); border-radius: 999px; color: var(--green);
+    font-family: var(--ui); font-size: 15px; font-weight: 700; letter-spacing: .3px;
+    box-shadow: 0 10px 30px #000b; cursor: pointer; }
+  .tv.ismuted .unmutetap { display: inline-flex; }
+
+  /* ---------- mobile scaffolding (inert on desktop) ---------- */
+  .mtabs { display: none; }
+  #mobileControls { display: none; }
+
+  /* =========================================================
+     PORTRAIT / PHONE — video-first, tabbed single column
+     ========================================================= */
+  @media (max-width: 760px), (orientation: portrait) and (max-width: 900px) {
+    .wrap { max-width: none; margin: 0; padding: 0 0 calc(24px + env(safe-area-inset-bottom));
+            display: flex; flex-direction: column; }
+    header { order: 1; gap: 2px 10px;
+             padding: calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-left))
+                      2px calc(12px + env(safe-area-inset-right)); }
+    h1 { font-size: 17px; letter-spacing: 1.6px; }
+    header .sub { display: none; }
+    .layout { order: 2; display: block;
+              padding-left: calc(12px + env(safe-area-inset-left));
+              padding-right: calc(12px + env(safe-area-inset-right)); }
+    /* the columns stop being boxes so the picture and tab bar stick to the page */
+    .main, .side, .stage { display: contents; }
+    .ticker { order: 3; margin: 16px 0 0; }
+    footer { order: 4; margin-top: 14px;
+             padding: 14px calc(12px + env(safe-area-inset-left)) 0 calc(12px + env(safe-area-inset-right)); }
+
+    /* --- video: full-bleed, first, dominant, and it never scrolls away --- */
+    .tv { border: 0; border-radius: 0; box-shadow: none;
+          margin-left: calc(-12px - env(safe-area-inset-left));
+          margin-right: calc(-12px - env(safe-area-inset-right)); }
+    /* typing: unpin the tab bar so nothing sits on the composer */
+    body.kbdopen .mtabs { position: static; }
+    .tv video { width: 100%; aspect-ratio: 16 / 9; height: auto; object-fit: contain; background: #000; }
+    .tvtop { top: 8px; left: 8px; gap: 5px; max-width: calc(100% - 16px); }
+    .badge { font-size: 10.5px; letter-spacing: 1px; padding: 4px 8px; overflow: hidden;
+             text-overflow: ellipsis; white-space: nowrap; }
+    .livestat { font-size: 10px; letter-spacing: .6px; padding: 3px 8px; }
+    .tvui::before { height: 60px; }
+    .chyron { padding: 26px 10px 8px; font-size: 12px; gap: 2px; }
+    .chyron-main { flex-wrap: wrap; gap: 0 8px; }
+    .chyron-main > span:first-child { flex: 1 0 100%; }
+    .chyron .credit { font-size: 11px; white-space: normal; }
+    .chyron-next, .chyron-auc { font-size: 11px; }
+    .tv.chatover .chyron { padding-right: 10px; }
+
+    /* --- control cluster moves below the picture at phone width --- */
+    #mobileControls { display: block; padding: 8px 0 9px; }
+    #mobileControls .tvbtns { position: static; display: flex; flex-wrap: nowrap; gap: 8px;
+                              justify-content: flex-start; overflow-x: auto;
+                              overscroll-behavior-x: contain; scrollbar-width: none; }
+    #mobileControls .tvbtns::-webkit-scrollbar { display: none; }
+    #mobileControls .tvbtns button { flex: 0 0 auto; white-space: nowrap; }
+    #cinemaBtn { display: none; }
+    #mobileControls .tvbtns button { min-height: 44px; padding: 10px 13px; font-size: 14px;
+      background: var(--panel-2); backdrop-filter: none; -webkit-backdrop-filter: none;
+      border: 1px solid var(--line); border-radius: 9px; }
+
+    /* --- sticky tab bar --- */
+    .mtabs { display: flex; position: sticky; top: 0; z-index: 20;
+      margin-left: calc(-12px - env(safe-area-inset-left));
+      margin-right: calc(-12px - env(safe-area-inset-right));
+      padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+      background: #070a10f2; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+      border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line); }
+    .mtabs button { flex: 1 1 0; min-width: 0; min-height: 48px; padding: 6px 4px;
+      background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
+      font-family: var(--ui); font-size: 14px; font-weight: 600; cursor: pointer; }
+    .mtabs button.on { color: var(--green); border-bottom-color: var(--green); }
+
+    /* --- one tab at a time (scoped: body itself carries a data-mtab too) --- */
+    .layout [data-mtab] { display: none !important; }
+    body[data-mtab="watch"] .layout [data-mtab="watch"],
+    body[data-mtab="chat"] .layout [data-mtab="chat"],
+    body[data-mtab="bid"] .layout [data-mtab="bid"],
+    body[data-mtab="account"] .layout [data-mtab="account"] { display: block !important; }
+    body[data-mtab="chat"] .layout .chatcol[data-mtab="chat"] { display: flex !important; }
+    /* chat rides along into fullscreen whichever tab is selected */
+    .tv > .chatcol[data-mtab] { display: flex !important; }
+
+    .panel, .dvr { margin: 14px 0 0; padding: 14px; border-radius: 12px; }
+    .panel, .dvr, .chatcol, label.field, .check, input, textarea, select, button, h2 {
+      scroll-margin-top: 62px; scroll-margin-bottom: 24px; }
+    .panel:last-child { margin-bottom: 0; }
+    #kbdHint { display: none !important; }
+    /* cinema mode is a desktop affordance — never let it eat the tabbed columns */
+    body.cinema .side { display: contents; }
+    body.cinema .layout { grid-template-columns: 1fr; }
+
+    /* --- chat: bounded, scrolls on its own, composer pinned --- */
+    .chatcol { margin-top: 14px; min-height: 240px; max-height: 70dvh;
+               height: var(--chath, calc(100dvh - var(--tvh, 56.25vw) - 200px)); }
+    .chatbox { border-radius: 12px; }
+    .chatlist { min-height: 0 !important; max-height: none !important; font-size: 14.5px; gap: 9px; }
+    .chatfoot form { padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); }
+    .chatinput input { font-size: 16px; padding: 11px 12px; }
+    .chatinput button { min-height: 44px; padding: 10px 16px; font-size: 15px; }
+    .chatnew { min-height: 40px; font-size: 13px; }
+
+    /* --- touch targets + no iOS zoom-on-focus --- */
+    input, textarea, select { font-size: 16px; padding: 12px 12px; }
+    input[type="file"] { font-size: 15px; }
+    input[type="file"]::file-selector-button { font-size: 14px; padding: 10px 12px; }
+    .check input { width: 22px; height: 22px; }
+    .tabs button, button.go, button.ghost, .packs button, .dvrlive, .mtabs button,
+    .gbtn, .clipchip, .chatinput button { min-height: 44px; }
+    button.go { font-size: 16px; padding: 14px 16px; }
+    button.ghost { font-size: 15px; padding: 12px 14px; }
+    .tabs button { font-size: 15px; padding: 12px 8px; }
+    .packs button { padding: 14px; }
+    .clipchip { width: 168px; padding: 11px 12px; }
+    .dvrstrip { padding: 12px 2px 6px; }
+    .gamevote { gap: 12px; }
+    .gbtn { min-height: 64px; font-size: 17px; }
+    footer { font-size: 13px; }
+    #toasts { left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom));
+              max-width: none; }
+    .modal-card { padding: 20px; }
+    .modal-actions { flex-direction: column; }
+    .modal-actions > * { min-height: 48px; }
+    .overlay { align-items: flex-start; padding: calc(14px + env(safe-area-inset-top)) 14px
+               calc(14px + env(safe-area-inset-bottom)); }
+    #gate .modal-card p { font-size: 14.5px; }
+  }
+
+  /* =========================================================
+     PHONE LANDSCAPE — near-fullscreen video with overlay chrome
+     ========================================================= */
+  @media (max-width: 950px) and (max-height: 500px) and (orientation: landscape) {
+    header, .ticker, footer, .dvr, .panel, .kbdhint, .mtabs, #mobileControls,
+    .layout > .chatcol, .stage > .chatcol { display: none !important; }
+    .wrap { max-width: none; margin: 0; padding: 0; }
+    .layout, .stage { grid-template-columns: 1fr; gap: 0; padding: 0; margin: 0; }
+    .tv { border: 0; border-radius: 0; box-shadow: none; height: 100dvh; }
+    .tv video { width: 100%; height: 100dvh; aspect-ratio: auto; object-fit: contain; }
+    .tvtop { top: calc(8px + env(safe-area-inset-top)); left: calc(10px + env(safe-area-inset-left)); }
+    .tvbtns { top: calc(8px + env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right)); }
+    .tvbtns button { min-height: 40px; }
+    .chyron { padding: 34px calc(14px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom))
+                        calc(14px + env(safe-area-inset-left)); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     * { animation-duration: .001s !important; animation-iteration-count: 1 !important; }
   }
@@ -533,6 +708,7 @@
               <button type="button" id="skipBtn" title="jump to whatever is on now">⏭ resync</button>
               <button type="button" id="reportBtn" title="report this clip">⚑ report</button>
             </div>
+            <button type="button" class="unmutetap" id="unmuteTap" aria-label="tap for sound"><span aria-hidden="true">🔇</span><span>Tap for sound</span></button>
             <div class="chyron">
               <div class="chyron-main">
                 <span><span class="ch" id="ch">CH ---</span> &nbsp; <span class="title" id="title">TUNING…</span></span>
@@ -544,7 +720,7 @@
           </div>
         </div>
 
-        <aside class="chatcol" id="chatDock" aria-label="Live chat">
+        <aside class="chatcol" id="chatDock" aria-label="Live chat" data-mtab="chat">
           <div class="chatbox">
             <div class="chathead"><span class="dot"></span> Live chat</div>
             <div class="chatscroll">
@@ -566,7 +742,18 @@
         </aside>
       </div>
 
-      <div class="dvr" id="dvr">
+      <!-- phone only: the TV control cluster is re-parented here below the picture -->
+      <div id="mobileControls"></div>
+
+      <!-- phone only: sticky section tabs -->
+      <nav class="mtabs" id="mtabs" role="tablist" aria-label="Sections">
+        <button type="button" role="tab" data-tab="watch" aria-selected="true" class="on">Watch</button>
+        <button type="button" role="tab" data-tab="bid" aria-selected="false">Bid</button>
+        <button type="button" role="tab" data-tab="chat" aria-selected="false">Chat</button>
+        <button type="button" role="tab" data-tab="account" aria-selected="false">Account</button>
+      </nav>
+
+      <div class="dvr" id="dvr" data-mtab="watch">
         <div class="dvrhead">
           <div>
             <h2>⏪ Rewind</h2>
@@ -577,12 +764,33 @@
         <div class="dvrstrip" id="dvrStrip"><span class="empty">Loading the last few clips…</span></div>
       </div>
 
+      <!-- ---------- Real or AI? guessing game ---------- -->
+      <div class="panel" id="gamePanel" data-mtab="watch" style="margin-top:14px">
+        <h2>🎭 Real or AI?</h2>
+        <p class="hint">This channel mixes machine-made clips with genuine public-domain archival
+          footage. Switch the game on and the provenance labels hide until you call it.</p>
+        <button type="button" class="ghost gametoggle" id="gameToggle" aria-pressed="false">▢ Play “Real or AI?”</button>
+        <div id="gameLive" style="display:none">
+          <div class="gamevote">
+            <button type="button" class="gbtn real" id="voteReal">REAL<small>archival footage · R</small></button>
+            <button type="button" class="gbtn ai" id="voteAi">AI<small>machine-generated · A</small></button>
+          </div>
+          <div class="gameresult" id="gameResult"></div>
+          <div class="gamescore" id="gameScore"></div>
+          <div class="gamefoot">
+            <span class="legalnote">Labels always come back — they return the moment you vote, and
+              automatically within 15 seconds if you don't.</span>
+            <button type="button" class="linkish" id="gameReset">reset score</button>
+          </div>
+        </div>
+      </div>
+
       <div class="kbdhint" id="kbdHint">
-        <span><kbd>F</kbd> fullscreen · <kbd>M</kbd> mute · <kbd>C</kbd> cinema mode · <kbd>←</kbd> rewind · <kbd>→</kbd> forward / live</span>
+        <span><kbd>F</kbd> fullscreen · <kbd>M</kbd> mute · <kbd>C</kbd> cinema · <kbd>←</kbd> rewind · <kbd>→</kbd> forward / live · <kbd>R</kbd>/<kbd>A</kbd> real or AI</span>
         <button type="button" class="x" id="kbdHintX" aria-label="Dismiss shortcut hint" title="Dismiss">×</button>
       </div>
 
-      <div class="panel" style="margin-top:14px">
+      <div class="panel" data-mtab="watch" style="margin-top:14px">
         <h2>Recently materialized</h2>
         <ul class="list" id="recent"></ul>
       </div>
@@ -590,7 +798,7 @@
 
     <div class="side">
       <!-- account -->
-      <div class="panel" id="acctPanel">
+      <div class="panel" id="acctPanel" data-mtab="account">
         <h2 id="acctTitle">Your account</h2>
         <div id="loggedOut">
           <div class="tabs">
@@ -627,7 +835,7 @@
       </div>
 
       <!-- bidding -->
-      <div class="panel">
+      <div class="panel" data-mtab="bid">
         <h2>Bid for the next slot</h2>
         <p class="hint">Bids collect for a short window — the highest bid when the clock hits zero programs the next slot.</p>
         <div class="auction idle" id="auctionBox">
@@ -675,7 +883,7 @@
       </div>
 
       <!-- upload -->
-      <div class="panel" id="uploadPanel">
+      <div class="panel" id="uploadPanel" data-mtab="account">
         <h2>Upload your own clip</h2>
         <p class="hint">Put your own footage on the channel — a paid slot.</p>
         <div id="uploadOut" class="msg">Sign in above to upload a clip.</div>
@@ -701,17 +909,17 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-mtab="watch">
         <h2>Next slot goes to</h2>
         <div class="nextslot" id="nextslot"><span class="empty">Nobody yet — the machine picks a random dimension.</span></div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-mtab="bid">
         <h2>Bid board</h2>
         <ul class="list" id="bids"><li><span class="what muted">No pending bids.</span></li></ul>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-mtab="account">
         <h2>Transmission stats</h2>
         <div class="stats" id="stats">…</div>
       </div>
@@ -854,21 +1062,173 @@ function clipCredit(c) {
   return c.source === 'ad' ? `AI-generated ad · paid slot · ${c.bidder}`
     : c.source === 'bid' ? `AI-generated · programmed by ${c.bidder} · ${c.amount}cr`
     : c.source === 'upload' ? `viewer upload · ${c.bidder || 'a viewer'} · human-reviewed`
-    : c.source === 'archive' ? 'public-domain archival footage'
+    : c.source === 'archive' ? ''
     : 'AI-generated · auto-transmission';
 }
 // badge label per source: AI clips say so, archive clips say public domain
 function clipKind(c) {
   return c.isAd ? 'AI-GENERATED AD'
-    : c.source === 'archive' ? 'PUBLIC-DOMAIN ARCHIVE'
+    : c.source === 'archive' ? ''
     : c.source === 'upload' ? 'VIEWER UPLOAD'
     : 'AI-GENERATED';
 }
 function clipBadge(c) {
-  const icon = c.isAd ? '📣' : c.source === 'archive' ? '▣' : c.source === 'upload' ? '▲' : '◈';
-  const cls = c.isAd ? ' ad' : c.source === 'archive' ? ' archive' : c.source === 'upload' ? ' upload' : ' ai';
+  if (c.source === 'archive') return { cls: ' archive', text: '' };
+  const icon = c.isAd ? '📣' : c.source === 'upload' ? '▲' : '◈';
+  const cls = c.isAd ? ' ad' : c.source === 'upload' ? ' upload' : ' ai';
   return { cls, text: icon + ' ' + clipKind(c) };
 }
+// a clip may be served from a CDN; fall back to the local library path
+function clipSrc(c) { return (c && c.url) ? c.url : ('/videos/' + (c && c.file)); }
+
+/* ---------------------------------------------------------------
+   "Real or AI?" — a guessing game played on the channel's own mix.
+   Provenance labels are hidden ONLY between a clip starting and the
+   round resolving; every round always resolves to the truth, either
+   on the vote or on a 15s timer. There is no way to keep them off.
+   --------------------------------------------------------------- */
+const GAME_REVEAL_MS = 15000;
+const game = {
+  on: false,
+  timer: null,
+  round: { clipId: null, truth: null, eligible: false, voted: null, correct: null, revealed: true },
+  score: { correct: 0, total: 0, streak: 0, best: 0 },
+};
+let curClip = null, curRewind = false;
+
+// viewer uploads are neither machine-made nor archival — they sit the game out
+function gameTruth(c) {
+  if (!c || c.source === 'upload') return null;
+  return c.source === 'archive' ? 'real' : 'ai';
+}
+const truthLabel = (t) => t === 'real' ? 'genuine archival footage' : 'AI-generated';
+function gameMasking() { return game.on && game.round.eligible && !game.round.revealed; }
+
+function loadGame() {
+  try {
+    game.on = localStorage.getItem('mc_game_on') === '1';
+    const s = JSON.parse(localStorage.getItem('mc_game_score') || 'null');
+    if (s && typeof s === 'object') {
+      for (const k of ['correct', 'total', 'streak', 'best']) {
+        const v = Number(s[k]);
+        if (Number.isFinite(v) && v >= 0) game.score[k] = Math.floor(v);
+      }
+    }
+  } catch {}
+}
+function saveGame() {
+  try {
+    localStorage.setItem('mc_game_on', game.on ? '1' : '0');
+    localStorage.setItem('mc_game_score', JSON.stringify(game.score));
+  } catch {}
+}
+
+// the single place the on-screen provenance chrome is written
+function renderProvenance() {
+  const c = curClip;
+  if (!c) return;
+  const b = $('badge'), masked = gameMasking();
+  if (curRewind) {
+    b.className = 'badge rewind' + (masked ? ' quiz' : '');
+    const kind = masked ? '❓ REAL OR AI?' : clipKind(c);
+    b.textContent = '⏪ REWIND' + (kind ? ' · ' + kind : '');
+  } else if (masked) {
+    b.className = 'badge quiz';
+    b.textContent = '❓ REAL OR AI?';
+  } else {
+    const tag = clipBadge(c);
+    b.className = 'badge' + tag.cls;
+    b.textContent = tag.text;
+  }
+  b.style.display = b.textContent ? '' : 'none';
+  $('credit').textContent = masked ? 'provenance hidden until you call it' : clipCredit(c);
+}
+
+// one round per clip — a forced re-tune to the same clip never re-opens it
+function startRound(clip, rewind) {
+  curClip = clip; curRewind = !!rewind;
+  if (game.round.clipId === clip.id) { renderProvenance(); renderGame(); return; }
+  clearTimeout(game.timer); game.timer = null;
+  const truth = gameTruth(clip);
+  game.round = { clipId: clip.id, truth, eligible: !!truth, voted: null, correct: null, revealed: !truth };
+  if (gameMasking()) game.timer = setTimeout(autoReveal, GAME_REVEAL_MS);
+  renderProvenance();
+  renderGame();
+}
+// no vote is no score — but the truth still goes back on screen
+function autoReveal() {
+  if (!game.round.eligible || game.round.revealed) return;
+  game.round.revealed = true;
+  renderProvenance(); renderStrip(); renderGame();
+}
+function castVote(answer) {
+  if (!game.on) return;
+  const r = game.round;
+  if (!r.eligible || r.revealed || r.voted) return;
+  clearTimeout(game.timer); game.timer = null;
+  r.voted = answer;
+  r.correct = answer === r.truth;
+  r.revealed = true;
+  game.score.total++;
+  if (r.correct) {
+    game.score.correct++;
+    game.score.streak++;
+    if (game.score.streak > game.score.best) game.score.best = game.score.streak;
+  } else game.score.streak = 0;
+  saveGame();
+  renderProvenance(); renderStrip(); renderGame();
+  toast((r.correct ? '✓ Correct — ' : '✗ Not quite — ') + truthLabel(r.truth), r.correct ? 'ok' : 'err');
+}
+function setGame(on) {
+  game.on = !!on;
+  clearTimeout(game.timer); game.timer = null;
+  saveGame();
+  if (gameMasking()) game.timer = setTimeout(autoReveal, GAME_REVEAL_MS);
+  renderProvenance(); renderGame(); renderStrip();
+}
+function renderGame() {
+  const t = $('gameToggle');
+  t.classList.toggle('on', game.on);
+  t.setAttribute('aria-pressed', game.on ? 'true' : 'false');
+  t.textContent = game.on ? '◉ Game on — switch off' : '▢ Play “Real or AI?”';
+  $('gameLive').style.display = game.on ? 'block' : 'none';
+
+  const r = game.round;
+  const canVote = game.on && r.eligible && !r.revealed;
+  $('voteReal').disabled = !canVote;
+  $('voteAi').disabled = !canVote;
+
+  const res = $('gameResult');
+  res.className = 'gameresult';
+  if (!r.clipId) res.textContent = 'Waiting for a clip to tune in…';
+  else if (!r.eligible) res.textContent = 'Viewer upload — it sits this round out. The next clip counts.';
+  else if (canVote) res.textContent = 'On air now: genuine archival footage, or machine-made? Call it.';
+  else if (r.voted) {
+    res.className = 'gameresult ' + (r.correct ? 'ok' : 'bad');
+    res.innerHTML = (r.correct ? '✓ Correct — ' : '✗ Not quite — ') +
+      `this clip is <b>${truthLabel(r.truth)}</b>. The labels are back on screen.`;
+  } else {
+    res.innerHTML = `Labels restored — this clip is <b>${truthLabel(r.truth)}</b>. No vote, no point.`;
+  }
+
+  const s = game.score;
+  const acc = s.total ? Math.round((s.correct / s.total) * 100) : 0;
+  $('gameScore').innerHTML =
+    `<span>score <b>${s.correct}/${s.total}</b></span>` +
+    `<span>accuracy <b>${acc}%</b></span>` +
+    `<span>streak <b>${s.streak}</b></span>` +
+    `<span>best <b>${s.best}</b></span>`;
+}
+$('gameToggle').onclick = () => setGame(!game.on);
+$('voteReal').onclick = () => castVote('real');
+$('voteAi').onclick = () => castVote('ai');
+$('gameReset').onclick = () => {
+  game.score = { correct: 0, total: 0, streak: 0, best: 0 };
+  saveGame(); renderGame();
+  toast('Real or AI? score reset.', 'ok');
+};
+loadGame();
+renderGame();
 
 async function tune(force = false) {
   try {
@@ -886,14 +1246,9 @@ async function tune(force = false) {
     tv.classList.add('tuning');
     $('ch').textContent = 'CH ' + now.clip.channel;
     $('title').textContent = (now.clip.title || '').toUpperCase();
+    startRound(now.clip, false);
 
-    const b = $('badge');
-    const tag = clipBadge(now.clip);
-    b.className = 'badge' + tag.cls;
-    b.textContent = tag.text;
-    $('credit').textContent = clipCredit(now.clip);
-
-    player.src = '/videos/' + now.clip.file;
+    player.src = clipSrc(now.clip);
     player.currentTime = Math.max(0, now.offset);
     await player.play().catch(() => {});
     setTimeout(() => tv.classList.remove('tuning'), 350);
@@ -932,7 +1287,7 @@ function sourceTag(c) {
   return c.source === 'ad' ? '📣 AI ad'
     : c.source === 'bid' ? '◈ AI · ' + (c.bidder || 'bid')
     : c.source === 'upload' ? '▲ ' + (c.bidder || 'viewer')
-    : c.source === 'archive' ? '▣ public domain' : '◈ AI';
+    : c.source === 'archive' ? '' : '◈ AI';
 }
 function renderStrip() {
   const strip = $('dvrStrip');
@@ -942,10 +1297,15 @@ function renderStrip() {
   }
   strip.innerHTML = dvr.clips.map((c, i) => {
     const onAir = !dvr.active && c.id === liveClipId;
+    // the chip for the clip on screen must not answer the quiz for you
+    const meta = onAir ? '● on air'
+      : dvr.active && i === dvr.index ? '⏪ rewinding'
+      : gameMasking() && c.id === currentClipId ? '❓ guess it'
+      : esc(sourceTag(c));
     return `<button type="button" class="clipchip${dvr.active && i === dvr.index ? ' on' : ''}${onAir ? ' now' : ''}" data-i="${i}">` +
       `<span class="cch">CH ${esc(String(c.channel))}</span>` +
       `<span class="ctitle">${esc(c.title || 'untitled')}</span>` +
-      `<span class="cmeta">${onAir ? '● on air' : dvr.active && i === dvr.index ? '⏪ rewinding' : esc(sourceTag(c))}</span>` +
+      `<span class="cmeta">${meta}</span>` +
       `</button>`;
   }).join('');
   for (const b of strip.querySelectorAll('.clipchip')) {
@@ -989,11 +1349,8 @@ function playRewind(i) {
   tv.classList.add('tuning');
   $('ch').textContent = 'CH ' + c.channel;
   $('title').textContent = (c.title || '').toUpperCase();
-  const b = $('badge');
-  b.className = 'badge rewind';
-  b.textContent = '⏪ REWIND · ' + clipKind(c);
-  $('credit').textContent = clipCredit(c);
-  player.src = '/videos/' + c.file;
+  startRound(c, true);
+  player.src = clipSrc(c);
   try { player.currentTime = 0; } catch {}
   player.play().catch(() => {});
   setTimeout(() => tv.classList.remove('tuning'), 350);
@@ -1108,13 +1465,23 @@ function renderAuction() {
 }
 renderAuction();
 setInterval(renderAuction, 1000);
+// mobile browsers refuse audio autoplay, so the picture starts muted and says so
+function renderMute() {
+  const m = player.muted;
+  tv.classList.toggle('ismuted', m);
+  $('muteBtn').textContent = m ? '🔇 unmute' : '🔊 mute';
+  $('muteBtn').setAttribute('aria-pressed', m ? 'false' : 'true');
+  $('muteBtn').title = m ? 'unmute (m)' : 'mute (m)';
+}
 function toggleMute() {
   player.muted = !player.muted;
-  $('muteBtn').textContent = player.muted ? '🔇 unmute' : '🔊 mute';
-  $('muteBtn').setAttribute('aria-pressed', player.muted ? 'false' : 'true');
+  renderMute();
   if (!player.muted) player.play().catch(() => {});
 }
 $('muteBtn').onclick = toggleMute;
+$('unmuteTap').onclick = () => { if (player.muted) toggleMute(); };
+player.addEventListener('volumechange', renderMute);
+renderMute();
 $('skipBtn').onclick = () => tune(true);
 $('reportBtn').onclick = () => reportClip();
 
@@ -1122,6 +1489,71 @@ $('reportBtn').onclick = () => reportClip();
    cinema mode / fullscreen / keyboard shortcuts
    --------------------------------------------------------------- */
 const stage = $('stage'), chatDock = $('chatDock');
+const mainCol = document.querySelector('.main'), tvbtns = document.querySelector('.tvbtns');
+
+/* ---------------------------------------------------------------
+   phone layout — sticky section tabs, and chrome that moves off the
+   picture when there is not enough width for it to sit on top
+   --------------------------------------------------------------- */
+const mqPhone = window.matchMedia('(max-width: 760px), (orientation: portrait) and (max-width: 900px)');
+const mqLandPhone = window.matchMedia('(max-width: 950px) and (max-height: 500px) and (orientation: landscape)');
+const MTABS = ['watch', 'chat', 'bid', 'account'];
+
+function setMobileTab(name, persist = true) {
+  const tab = MTABS.includes(name) ? name : 'watch';
+  document.body.dataset.mtab = tab;
+  for (const b of $('mtabs').querySelectorAll('button')) {
+    const on = b.dataset.tab === tab;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+  if (persist) { try { localStorage.setItem('mc_mtab', tab); } catch {} }
+  if (persist && mqPhone.matches) {
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { window.scrollTo(0, 0); }
+  }
+  if (tab === 'chat') setTimeout(chatScrollToBottom, 0);
+}
+for (const b of $('mtabs').querySelectorAll('button')) {
+  b.onclick = () => setMobileTab(b.dataset.tab);
+}
+let startTab = 'watch';
+try { startTab = localStorage.getItem('mc_mtab') || 'watch'; } catch {}
+setMobileTab(startTab, false);
+
+// at phone width six overlay buttons cannot be 44px tall and still fit on the
+// picture — so the cluster rides below it, and returns for landscape/fullscreen
+// the sticky tab bar parks directly under the picture, so it needs its height
+function measureTv() {
+  const root = document.documentElement;
+  const h = Math.round(tv.getBoundingClientRect().height);
+  if (h > 0) root.style.setProperty('--tvh', h + 'px');
+  // whatever is left under the picture, the control row and the tab bar is the
+  // chat box's budget — the composer has to stay above the fold
+  const px = (el) => (el ? el.offsetHeight : 0);
+  const chrome = h + px(document.querySelector('header')) + px($('mobileControls')) + px($('mtabs'));
+  root.style.setProperty('--chath', Math.max(240, Math.round(window.innerHeight - chrome - 26)) + 'px');
+}
+if (window.ResizeObserver) { try { new ResizeObserver(measureTv).observe(tv); } catch {} }
+window.addEventListener('resize', measureTv);
+measureTv();
+
+// an on-screen keyboard leaves no room for a pinned picture
+const isTouch = () => window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+const typey = (el) => !!el && /^(input|textarea|select)$/i.test(el.tagName) &&
+  !/^(checkbox|radio|file|button|submit)$/i.test(el.type || '');
+document.addEventListener('focusin', (e) => {
+  if (!mqPhone.matches || !typey(e.target)) return;
+  document.body.classList.add('kbdopen');
+});
+document.addEventListener('focusout', () => {
+  setTimeout(() => { if (!typey(document.activeElement)) document.body.classList.remove('kbdopen'); }, 80);
+});
+
+function syncControlsPlacement() {
+  const below = mqPhone.matches && !mqLandPhone.matches && fsEl() !== tv;
+  const target = below ? $('mobileControls') : $('tvui');
+  if (tvbtns.parentElement !== target) target.appendChild(tvbtns);
+}
 
 function isCinema() { return document.body.classList.contains('cinema'); }
 function setCinema(on, persist = true) {
@@ -1143,22 +1575,47 @@ function toggleFullscreen() {
       return;
     }
     const req = tv.requestFullscreen || tv.webkitRequestFullscreen;
-    if (!req) { toast('This browser will not let the page go fullscreen.'); return; }
+    if (!req) { videoFullscreen(); return; }
     const p = req.call(tv);
-    if (p && p.catch) p.catch(() => toast('Fullscreen was blocked by the browser.'));
-  } catch { toast('Fullscreen was blocked by the browser.'); }
+    if (p && p.catch) p.catch(() => videoFullscreen());
+  } catch { videoFullscreen(); }
+}
+// iOS Safari: the container API is missing or refuses — the <video> has its own
+function videoFullscreen() {
+  try {
+    if (typeof player.webkitEnterFullscreen === 'function') { player.webkitEnterFullscreen(); return; }
+    if (typeof player.webkitSetPresentationMode === 'function') {
+      player.webkitSetPresentationMode('fullscreen'); return;
+    }
+  } catch {}
+  toast('This browser will not let the video go fullscreen.');
 }
 $('fsBtn').onclick = toggleFullscreen;
 $('cinemaBtn').onclick = () => setCinema(!isCinema());
 
 // in fullscreen the chat rides along as a floating column over the video
 function syncChatPlacement() {
-  if (fsEl() === tv) { if (chatDock.parentElement !== tv) tv.appendChild(chatDock); }
-  else if (chatDock.parentElement !== stage) stage.appendChild(chatDock);
+  // phone: chat lives in its own tab below the tab bar, not beside the picture
+  const phone = mqPhone.matches && !mqLandPhone.matches;
+  const target = fsEl() === tv ? tv : phone ? mainCol : stage;
+  const anchor = $('mtabs');
+  const placed = chatDock.parentElement === target &&
+    (target !== mainCol || chatDock.previousElementSibling === anchor);
+  if (!placed) {
+    if (target === mainCol) mainCol.insertBefore(chatDock, anchor.nextSibling);
+    else target.appendChild(chatDock);
+  }
   // chat floating over the picture? then keep the chyron + buttons clear of it
   tv.classList.toggle('chatover', fsEl() === tv || (isCinema() && window.innerWidth > 760));
 }
-window.addEventListener('resize', syncChatPlacement);
+function syncLayout() { syncChatPlacement(); syncControlsPlacement(); measureTv(); }
+window.addEventListener('resize', syncLayout);
+window.addEventListener('orientationchange', syncLayout);
+if (mqPhone.addEventListener) {
+  mqPhone.addEventListener('change', syncLayout);
+  mqLandPhone.addEventListener('change', syncLayout);
+}
+syncControlsPlacement();
 
 let hideTimer = null, overControl = false;
 function typingInChat() {
@@ -1187,7 +1644,7 @@ function onFsChange() {
   b.textContent = on ? '⛶ exit fullscreen' : '⛶ fullscreen';
   b.setAttribute('aria-pressed', on ? 'true' : 'false');
   b.title = on ? 'leave fullscreen (f)' : 'fullscreen (f)';
-  syncChatPlacement();
+  syncLayout();
   if (!on) { clearTimeout(hideTimer); tv.classList.remove('uihidden'); }
   else showTvUi();
   chatScrollToBottom();
@@ -1197,6 +1654,7 @@ document.addEventListener('webkitfullscreenchange', onFsChange);
 
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (isTouch()) return;                 // touch device: no keyboard-only shortcuts
   const t = e.target;
   const tag = (t && t.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'textarea' || tag === 'select' || (t && t.isContentEditable)) return;
@@ -1207,6 +1665,9 @@ document.addEventListener('keydown', (e) => {
   else if (k === 'c') { e.preventDefault(); setCinema(!isCinema()); }
   else if (k === 'arrowleft') { e.preventDefault(); dvrPrev(); }
   else if (k === 'arrowright') { e.preventDefault(); dvrNext(); }
+  // real-or-AI votes — only while the game is on, never while typing
+  else if (k === 'r' && game.on) { e.preventDefault(); castVote('real'); }
+  else if (k === 'a' && game.on) { e.preventDefault(); castVote('ai'); }
 });
 
 // dismissible shortcut hint
@@ -1699,9 +2160,15 @@ async function refresh() {
           `<span class="what">${esc(b.idea)}</span><span class="amt">${esc(String(b.amount))}cr</span></li>`).join('')
       : '<li><span class="what muted">No pending bids — be the first.</span></li>';
 
-    $('recent').innerHTML = s.recentClips.map(c =>
-      `<li><span class="who">CH ${esc(String(c.channel))}</span><span class="what">${esc(c.title)}</span>` +
-      `<span class="amt">${c.source === 'ad' ? '📣 AI ad' : c.source === 'bid' ? '◈ AI · ' + esc(c.bidder) : c.source === 'upload' ? '▲ ' + esc(c.bidder || 'viewer') : c.source === 'archive' ? '▣ public domain' : '◈ AI'}</span></li>`).join('');
+    $('recent').innerHTML = s.recentClips.map(c => {
+      // the clip on screen keeps its provenance hidden while a round is open
+      const tag = gameMasking() && c.id === currentClipId ? '❓ guess it'
+        : c.source === 'ad' ? '📣 AI ad' : c.source === 'bid' ? '◈ AI · ' + esc(c.bidder)
+        : c.source === 'upload' ? '▲ ' + esc(c.bidder || 'viewer')
+        : c.source === 'archive' ? '' : '◈ AI';
+      return `<li><span class="who">CH ${esc(String(c.channel))}</span><span class="what">${esc(c.title)}</span>` +
+        `<span class="amt">${tag}</span></li>`;
+    }).join('');
 
     $('stats').innerHTML =
       `backend: <b>${esc(s.backend)}</b> · payments: <b>${s.stripeEnabled ? 'live' : 'demo'}</b><br>` +
