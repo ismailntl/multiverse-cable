@@ -69,8 +69,9 @@
     filter: contrast(1.7); animation: flick .08s steps(2) infinite; }
   @keyframes flick { to { transform: translateY(2px) } }
   .tv.tuning .static { display: block; }
-  .tvtop { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; align-items: center;
-           flex-wrap: wrap; max-width: 62%; }
+  /* stacked so the status corner never collides with the button row */
+  .tvtop { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column;
+           gap: 7px; align-items: flex-start; max-width: 60%; }
   .badge {
     font-family: var(--mono); font-size: 12px;
     letter-spacing: 1.5px; background: #c0182d; color: #fff; padding: 5px 10px;
@@ -90,7 +91,7 @@
     box-shadow: 0 0 8px var(--red); animation: blip 2s ease-in-out infinite; flex: 0 0 auto; }
   .livestat .vw { color: var(--dim); }
   .livestat.rew { color: #ffd6f1; border-color: #ff5ec766; background: #2a0b2299; }
-  .livestat.rew .dot { background: var(--pink); box-shadow: 0 0 8px var(--pink); animation: none; }
+  .livestat.rew .dot { display: none; }
   /* floating overlay layer: everything here sits ON TOP of the video */
   .tvui { position: absolute; inset: 0; pointer-events: none; transition: opacity .25s ease; }
   .tvui > * { pointer-events: auto; }
@@ -227,6 +228,8 @@
     font-size: 13px; font-weight: 600; flex: 0 0 auto; }
   .dvrlive:hover { border-color: var(--green); color: var(--green); }
   .dvrlive.on { border-color: var(--pink); color: var(--pink); background: #22091b; }
+  .dvrlive[disabled] { opacity: .55; cursor: default; color: var(--faint); }
+  .dvrlive[disabled]:hover { border-color: var(--line); color: var(--faint); }
   .dvrstrip { display: flex; gap: 8px; overflow-x: auto; padding: 12px 2px 4px; margin-top: 2px;
               scrollbar-width: thin; overscroll-behavior-x: contain; }
   .dvrstrip .empty { color: var(--dim); font-size: 13px; padding: 4px 0; }
@@ -877,7 +880,7 @@ function setViewers(n) {
 }
 function renderLiveStat() {
   $('liveStat').classList.toggle('rew', dvr.active);
-  $('liveLabel').textContent = dvr.active ? '⏪ REWIND' : '● LIVE';
+  $('liveLabel').textContent = dvr.active ? '⏪ REWIND' : 'LIVE';   // the dot is the ● when live
   $('viewerCount').textContent = viewerText(viewers);
 }
 
@@ -1158,6 +1161,8 @@ document.addEventListener('keydown', (e) => {
   if (k === 'f') { e.preventDefault(); toggleFullscreen(); }
   else if (k === 'm') { e.preventDefault(); toggleMute(); }
   else if (k === 'c') { e.preventDefault(); setCinema(!isCinema()); }
+  else if (k === 'arrowleft') { e.preventDefault(); dvrPrev(); }
+  else if (k === 'arrowright') { e.preventDefault(); dvrNext(); }
 });
 
 // dismissible shortcut hint
@@ -1465,7 +1470,12 @@ $('bidBtn').onclick = async () => {
     const r = await api('/api/bid', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
-    m.textContent = `✓ Bid placed — ${r.credits} credits left. Highest bid programs the next slot.`;
+    if (r.auction) syncAuction(r.auction);
+    const left = r.auction && r.auction.msLeft != null ? Math.ceil(r.auction.msLeft / 1000) : null;
+    m.textContent = `✓ Bid placed — ${r.credits} credits left. ` +
+      (left != null
+        ? `Highest bid when the clock hits zero (${left}s) programs the slot.`
+        : 'Highest bid when the window closes programs the slot.');
     m.className = 'msg ok';
     $('idea').value = ''; $('amount').value = '';
     updatePricing(true);
@@ -1552,6 +1562,15 @@ $('dmcaLink').onclick = reportClip;
 async function refresh() {
   try {
     const s = await api('/api/state'); state = s;
+
+    // auction clock + live viewer count (re-sync the locally ticking clock)
+    syncAuction(s.auction);
+    setViewers(s.viewers);
+    // rewinding viewers still need a /api/now heartbeat to be counted
+    if (dvr.active) tune(false);
+
+    // DVR: prefer the dedicated endpoint, fall back to the clips in /api/state
+    if (!dvr.endpointOk && Array.isArray(s.recentClips)) { dvr.clips = s.recentClips; renderStrip(); }
 
     // slot pricing + chat auth
     const hadPricing = !!$('slotLen').dataset.filled;
@@ -1642,9 +1661,10 @@ async function refresh() {
 }
 
 setMode('show'); setAuthMode('login');
-tune(true); refresh();
+tune(true); refresh(); loadRecent();
 setInterval(refresh, 5000);
-setInterval(() => { if (player.paused || player.ended) tune(true); }, 30000);
+setInterval(loadRecent, 15000);
+setInterval(() => { if (!dvr.active && (player.paused || player.ended)) tune(true); }, 30000);
 </script>
 </body>
 </html>
