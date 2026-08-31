@@ -75,12 +75,14 @@
   .badge {
     font-family: var(--mono); font-size: 12px;
     letter-spacing: 1.5px; background: #c0182d; color: #fff; padding: 5px 10px;
-    border-radius: 4px; font-weight: 700; flex: 0 0 auto;
+    border-radius: 4px; font-weight: 700; flex: 0 0 auto; max-width: 100%;
   }
   .badge.ad { background: var(--amber); color: #201400; }
   .badge.archive { background: #4a5568; color: #fff; }
   .badge.upload { background: var(--cyan); color: #04222b; }
   .badge.rewind { background: var(--pink); color: #2a0020; }
+  /* machine-made clips get their own colour so provenance reads at a glance */
+  .badge.ai { background: #7c4dff; color: #fff; }
 
   /* live / rewind status + viewer count */
   .livestat { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11.5px;
@@ -171,22 +173,42 @@
   #tv:fullscreen .chyron-next { font-size: 14px; }
   #tv:fullscreen .tvbtns { top: 18px; right: 18px; }
   #tv:fullscreen .tvtop { top: 18px; left: 18px; }
+  #tv:fullscreen .badge { font-size: 14px; padding: 7px 13px; }
+  #tv:fullscreen .chyron .credit { font-size: 14px; }
 
   /* ---------- chat ---------- */
-  .chatcol { min-width: 0; display: flex; }
-  .chatbox { display: flex; flex-direction: column; flex: 1; min-height: 0;
+  .chatcol { min-width: 0; min-height: 0; display: flex; }
+  .chatbox { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0;
     background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-  .chathead { display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+  /* The chat column must never size the stage row. Left in flow it is an
+     auto-height grid item, so a growing message list grows the whole column
+     and nothing ever scrolls — taking the box out of flow pins its height to
+     the TV beside it and gives the list a real box to scroll inside. */
+  @media (min-width: 1041px) {
+    body:not(.cinema) .stage > .chatcol { position: relative; }
+    body:not(.cinema) .stage > .chatcol > .chatbox { position: absolute; inset: 0; }
+  }
+  .chathead { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 9px 12px;
     border-bottom: 1px solid var(--line-soft); font-family: var(--mono); font-size: 11.5px;
     letter-spacing: 1.6px; color: var(--amber); text-transform: uppercase; }
   .chathead .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
     box-shadow: 0 0 8px var(--green); animation: blip 2s ease-in-out infinite; }
   @keyframes blip { 50% { opacity: .25; } }
-  .chatlist { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column;
-    gap: 7px; font-size: 13.5px; line-height: 1.45; min-height: 180px; max-height: 46vh;
-    overscroll-behavior: contain; }
-  .stage .chatlist { max-height: none; }
-  @media (max-width: 1040px) { .chatlist { max-height: 300px; } }
+  /* the message list is the only part of the panel that scrolls */
+  .chatscroll { position: relative; flex: 1 1 auto; min-height: 0; display: flex;
+                flex-direction: column; }
+  .chatlist { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch; touch-action: pan-y; scrollbar-width: thin;
+    padding: 10px 12px; display: flex; flex-direction: column;
+    gap: 7px; font-size: 13.5px; line-height: 1.45; }
+  /* stacked layout: nothing above bounds the column, so bound the list itself */
+  @media (max-width: 1040px) { .chatlist { min-height: 180px; max-height: 300px; } }
+  .chatnew { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    z-index: 3; background: #0d1b14; border: 1px solid var(--green); color: var(--green);
+    border-radius: 999px; padding: 5px 13px; cursor: pointer; font-family: var(--ui);
+    font-size: 12.5px; font-weight: 600; white-space: nowrap; box-shadow: 0 8px 22px #000c; }
+  .chatnew:hover { background: #12291d; }
+  .chatnew[hidden] { display: none; }
   .cmsg { word-wrap: break-word; overflow-wrap: anywhere; }
   .cmsg .cname { color: var(--cyan); font-weight: 600; }
   .cmsg .ctext { color: var(--text); }
@@ -198,6 +220,8 @@
   .cmsg.sys .ctext { color: var(--faint); }
   .chatnote { padding: 10px 12px; font-size: 13px; color: var(--dim); border-top: 1px solid var(--line-soft); }
   .chatnote button { font-size: 13px; }
+  /* composer is pinned: it never shrinks and never scrolls out of view */
+  .chatfoot { flex: 0 0 auto; }
   .chatfoot form { display: block; padding: 9px 10px 10px; border-top: 1px solid var(--line-soft); }
   .chatinput { display: flex; gap: 7px; }
   .chatinput input { padding: 9px 10px; font-size: 14px; }
@@ -445,13 +469,15 @@
 <div id="gate" class="overlay">
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
     <h2 id="gateTitle">⚠ Before you tune in</h2>
-    <p><b>This channel broadcasts AI-generated content 24/7, with no human reviewing
-    each clip before it airs.</b></p>
-    <p class="warn">It may contain surreal, absurd, or <b>mature content</b> unsuitable
-    for minors. You must be <b>18 or older</b> to watch.</p>
-    <p>Every clip is machine-generated fiction. Any resemblance to real people,
-    brands, or events is unintended — report anything that slips through and it
-    comes off air immediately.</p>
+    <p><b>This channel broadcasts 24/7 and mixes AI-generated clips with
+    public-domain archival footage and viewer uploads.</b></p>
+    <p class="warn"><b>No human reviews AI-generated clips before they air.</b>
+    Content may be surreal, absurd, or <b>mature</b> and unsuitable for minors.
+    You must be <b>18 or older</b> to watch.</p>
+    <p>AI clips are machine-made fiction — any resemblance to real people, brands,
+    or events is unintended. Archival clips are public domain; viewer uploads are
+    checked by a human first. Every clip is labelled on screen. Report anything
+    that slips through and it comes off air immediately.</p>
     <div class="modal-actions">
       <button class="go" type="button" id="gateYes">I am 18+ — tune in</button>
       <button class="ghost" type="button" id="gateNo">Leave</button>
@@ -518,7 +544,10 @@
         <aside class="chatcol" id="chatDock" aria-label="Live chat">
           <div class="chatbox">
             <div class="chathead"><span class="dot"></span> Live chat</div>
-            <div class="chatlist" id="chatList" aria-live="polite"></div>
+            <div class="chatscroll">
+              <div class="chatlist" id="chatList" aria-live="polite"></div>
+              <button type="button" class="chatnew" id="chatNew" hidden>↓ new messages</button>
+            </div>
             <div class="chatfoot">
               <div class="chatnote" id="chatOut" style="display:none">Connecting to the chat relay…</div>
               <form id="chatForm" onsubmit="return false">
@@ -574,7 +603,7 @@
             </label>
             <div id="signupExtras" style="display:none;gap:10px;">
               <label class="check"><input type="checkbox" id="ageConfirmed"> <span>I confirm I am 18 or older.</span></label>
-              <label class="check"><input type="checkbox" id="termsAccepted"> <span>I accept the <a href="/policy" target="_blank">content policy</a> and understand clips are AI-generated and may include mature content.</span></label>
+              <label class="check"><input type="checkbox" id="termsAccepted"> <span>I accept the <a href="/policy" target="_blank">content policy</a> and understand the channel mixes AI-generated clips (which air with no human pre-review), public-domain archival footage, and viewer uploads, and may include mature content.</span></label>
             </div>
             <button class="go" type="button" id="authBtn">Sign in</button>
             <div class="msg" id="authMsg"></div>
@@ -687,7 +716,8 @@
   </div>
 
   <footer>
-    <span class="legal"><b>AI-generated · 18+ only · no human pre-review</b></span>
+    <span class="legal"><b>18+ only · AI clips air with no human pre-review</b></span>
+    <span class="mixnote">Mixes AI-generated clips, public-domain archival footage, and viewer uploads.</span>
     <a href="/policy" target="_blank">Content &amp; copyright policy</a>
     <button type="button" class="linkish" id="dmcaLink">Report a clip / DMCA</button>
   </footer>
@@ -816,11 +846,25 @@ $('gateNo').onclick = () => { location.href = 'https://www.google.com'; };
 // ---- the broadcast ----
 let liveClipId = null, serverSkew = 0;
 
+// provenance, spelled out — the three kinds of content are never conflated
 function clipCredit(c) {
-  return c.source === 'ad' ? `paid slot · ${c.bidder}`
-    : c.source === 'bid' ? `programmed by ${c.bidder} · ${c.amount}cr`
-    : c.source === 'upload' ? `uploaded by ${c.bidder || 'a viewer'}`
-    : c.source === 'archive' ? 'public domain archives' : 'auto-transmission';
+  return c.source === 'ad' ? `AI-generated ad · paid slot · ${c.bidder}`
+    : c.source === 'bid' ? `AI-generated · programmed by ${c.bidder} · ${c.amount}cr`
+    : c.source === 'upload' ? `viewer upload · ${c.bidder || 'a viewer'} · human-reviewed`
+    : c.source === 'archive' ? 'public-domain archival footage'
+    : 'AI-generated · auto-transmission';
+}
+// badge label per source: AI clips say so, archive clips say public domain
+function clipKind(c) {
+  return c.isAd ? 'AI-GENERATED AD'
+    : c.source === 'archive' ? 'PUBLIC-DOMAIN ARCHIVE'
+    : c.source === 'upload' ? 'VIEWER UPLOAD'
+    : 'AI-GENERATED';
+}
+function clipBadge(c) {
+  const icon = c.isAd ? '📣' : c.source === 'archive' ? '▣' : c.source === 'upload' ? '▲' : '◈';
+  const cls = c.isAd ? ' ad' : c.source === 'archive' ? ' archive' : c.source === 'upload' ? ' upload' : ' ai';
+  return { cls, text: icon + ' ' + clipKind(c) };
 }
 
 async function tune(force = false) {
@@ -840,13 +884,10 @@ async function tune(force = false) {
     $('ch').textContent = 'CH ' + now.clip.channel;
     $('title').textContent = (now.clip.title || '').toUpperCase();
 
-    const src = now.clip.source;
     const b = $('badge');
-    b.className = 'badge' + (now.clip.isAd ? ' ad' : src === 'archive' ? ' archive' : src === 'upload' ? ' upload' : '');
-    b.textContent = now.clip.isAd ? '📣 PAID AD'
-      : src === 'archive' ? '▣ FOUND FOOTAGE'
-      : src === 'upload' ? '▲ VIEWER UPLOAD'
-      : '● LIVE';
+    const tag = clipBadge(now.clip);
+    b.className = 'badge' + tag.cls;
+    b.textContent = tag.text;
     $('credit').textContent = clipCredit(now.clip);
 
     player.src = '/videos/' + now.clip.file;
@@ -885,10 +926,10 @@ function renderLiveStat() {
 }
 
 function sourceTag(c) {
-  return c.source === 'ad' ? '📣 ad'
-    : c.source === 'bid' ? '📺 ' + (c.bidder || 'bid')
+  return c.source === 'ad' ? '📣 AI ad'
+    : c.source === 'bid' ? '◈ AI · ' + (c.bidder || 'bid')
     : c.source === 'upload' ? '▲ ' + (c.bidder || 'viewer')
-    : c.source === 'archive' ? '▣ archive' : 'auto';
+    : c.source === 'archive' ? '▣ public domain' : '◈ AI';
 }
 function renderStrip() {
   const strip = $('dvrStrip');
@@ -947,7 +988,7 @@ function playRewind(i) {
   $('title').textContent = (c.title || '').toUpperCase();
   const b = $('badge');
   b.className = 'badge rewind';
-  b.textContent = '⏪ REWIND';
+  b.textContent = '⏪ REWIND · ' + clipKind(c);
   $('credit').textContent = clipCredit(c);
   player.src = '/videos/' + c.file;
   try { player.currentTime = 0; } catch {}
@@ -1644,7 +1685,7 @@ async function refresh() {
 
     $('recent').innerHTML = s.recentClips.map(c =>
       `<li><span class="who">CH ${esc(String(c.channel))}</span><span class="what">${esc(c.title)}</span>` +
-      `<span class="amt">${c.source === 'ad' ? '📣 ad' : c.source === 'bid' ? esc(c.bidder) : c.source === 'upload' ? '▲ ' + esc(c.bidder || 'viewer') : c.source === 'archive' ? 'archives' : 'auto'}</span></li>`).join('');
+      `<span class="amt">${c.source === 'ad' ? '📣 AI ad' : c.source === 'bid' ? '◈ AI · ' + esc(c.bidder) : c.source === 'upload' ? '▲ ' + esc(c.bidder || 'viewer') : c.source === 'archive' ? '▣ public domain' : '◈ AI'}</span></li>`).join('');
 
     $('stats').innerHTML =
       `backend: <b>${esc(s.backend)}</b> · payments: <b>${s.stripeEnabled ? 'live' : 'demo'}</b><br>` +
@@ -1656,7 +1697,7 @@ async function refresh() {
 
     $('tickerText').textContent =
       (s.recentClips.map(c => `CH ${c.channel} — ${c.title}`).join('   ✦   ') || 'SIGNAL ACQUIRED') +
-      '   ✦   BID TO PROGRAM THE NEXT DIMENSION   ✦   ALL CONTENT AI-GENERATED, 18+';
+      '   ✦   BID TO PROGRAM THE NEXT DIMENSION   ✦   AI-GENERATED + PUBLIC-DOMAIN ARCHIVE + VIEWER UPLOADS   ✦   18+ · AI CLIPS AIR WITH NO HUMAN PRE-REVIEW';
   } catch {}
 }
 

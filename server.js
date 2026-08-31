@@ -2,7 +2,8 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './lib/config.js';
-import { store } from './lib/store.js';
+import * as db from './lib/store-adapter.js';
+import { initStore } from './lib/store-adapter.js';
 import { startScheduler, requestBatch, batchStatus, kickNow } from './lib/scheduler.js';
 import * as chat from './lib/chat.js';
 import * as auction from './lib/auction.js';
@@ -89,7 +90,7 @@ function sessionCookie(token) {
   return bits.join('; ');
 }
 
-const currentUser = (req) => store.userForSession(cookies(req).ic_session);
+const currentUser = (req) => db.userForSession(cookies(req).ic_session);
 const publicUser = (u) => ({ id: u.id, email: u.email, credits: u.credits, ageAttestedAt: u.ageAttestedAt });
 
 function publicBid(b) {
@@ -151,14 +152,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/api/state') {
-      const s = store.state;
-      const user = currentUser(req);
-      const pending = s.bids.filter((b) => b.status === 'pending').sort((a, b) => b.amount - a.amount);
+      const user = await currentUser(req);
+      const pending = await db.pendingBids(20);
       return json(res, 200, {
         backend: activeBackend(),
         batch: batchStatus(),
-        libraryClips: s.clips.length,
-        stats: s.stats,
+        libraryClips: db.clips().length,
+        stats: await db.stats(),
         nextSlot: pending[0] ? publicBid(pending[0]) : null,
         pendingBids: pending.slice(0, 20).map(publicBid),
         recentClips: playout.history(12).map((h) => ({ ...publicClip(h.clip), airedAt: h.startedAt, paid: h.priority })),
@@ -168,21 +168,21 @@ const server = http.createServer(async (req, res) => {
         stripeEnabled: stripeEnabled(),
         termsVersion: config.termsVersion,
         user: user ? publicUser(user) : null,
-        myBids: user ? s.bids.filter((b) => b.userId === user.id).slice(-10).reverse().map(publicBid) : [],
-        ledger: user ? store.ledgerFor(user.id, 10) : [],
+        myBids: user ? (await db.bidsFor(user.id, 10)).map(publicBid) : [],
+        ledger: user ? await db.ledgerFor(user.id, 10) : [],
         // pricing + uploads
-        auction: auction.status(),
+        auction: await auction.status(),
         viewers: viewerCount(),
         pricing: priceTable(),
         uploadCost: config.uploadCostCredits,
         maxUploadSec: config.maxUploadSec,
         maxUploadMb: config.maxUploadMb,
         myUploads: user
-          ? store.uploadsFor(user.id).map((u) => ({
+          ? (await db.uploadsFor(user.id)).map((u) => ({
               id: u.id, title: u.title, status: u.status, amount: u.amount, createdAt: u.createdAt,
             }))
           : [],
-        pendingReview: user && config.adminEmails.includes(user.email) ? store.pendingUploads().length : undefined,
+        pendingReview: user && config.adminEmails.includes(user.email) ? (await db.pendingUploads()).length : undefined,
       });
     }
 
@@ -198,31 +198,31 @@ const server = http.createServer(async (req, res) => {
       if (b.ageConfirmed !== true || b.termsAccepted !== true) {
         return json(res, 400, { error: 'you must confirm you are 18+ and accept the content policy' });
       }
-      if (store.findUserByEmail(email)) return json(res, 409, { error: 'that email already has an account' });
-      const user = store.createUser({ email, password, ip: clientIp(req), termsVersion: config.termsVersion });
-      const token = store.createSession(user.id);
+      if (await db.findUserByEmail(email)) return json(res, 409, { error: 'that email already has an account' });
+      const user = await db.createUser({ email, password, ip: clientIp(req), termsVersion: config.termsVersion });
+      const token = await db.createSession(user.id);
       return json(res, 201, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(token) });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/login') {
       const b = JSON.parse((await readBody(req)) || '{}');
-      const user = store.findUserByEmail(String(b.email ?? ''));
-      if (!user || !store.checkPassword(user, String(b.password ?? ''))) {
+      const user = await db.findUserByEmail(String(b.email ?? ''));
+      if (!user || !db.checkPassword(user, String(b.password ?? ''))) {
         return json(res, 401, { error: 'wrong email or password' });
       }
-      const token = store.createSession(user.id);
+      const token = await db.createSession(user.id);
       return json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(token) });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/logout') {
-      store.destroySession(cookies(req).ic_session);
+      await db.destroySession(cookies(req).ic_session);
       return json(res, 200, { ok: true }, { 'Set-Cookie': 'ic_session=; HttpOnly; Path=/; Max-Age=0' });
     }
 
     // --- credits / stripe --------------------------------------------------
 
     if (req.method === 'POST' && url.pathname === '/api/checkout') {
-      const user = currentUser(req);
+      const user = await currentUser(req);
       if (!user) return json(res, 401, { error: 'sign in first' });
       const b = JSON.parse((await readBody(req)) || '{}');
       const pack = findPack(b.packId);
@@ -245,7 +245,7 @@ const server = http.createServer(async (req, res) => {
     // --- bidding (shows + ads) ---------------------------------------------
 
     if (req.method === 'POST' && url.pathname === '/api/bid') {
-      const user = currentUser(req);
+      const user = await currentUser(req);
       if (!user) return json(res, 401, { error: 'sign in to place a bid' });
 
       const b = JSON.parse((await readBody(req)) || '{}');
@@ -277,35 +277,44 @@ const server = http.createServer(async (req, res) => {
           minCredits: floor,
         });
       }
+      // Content + copyright gate across every field the advertiser controls.
+      // Runs before the balance check so a policy rejection reports the real
+      // reason instead of masking it behind "not enough credits".
+      const verdict = await moderate([idea, ad?.brand, ad?.product, ad?.cta].filter(Boolean).join(' '));
+      if (!verdict.allowed) {
+        await db.logModeration({ userId: user.id, surface: 'bid', text: idea, reason: verdict.reason, ip: clientIp(req) });
+        return json(res, 422, { error: verdict.reason });
+      }
+
       if (user.credits < amount) return json(res, 402, { error: `not enough credits (you have ${user.credits})` });
 
-      // Content + copyright gate across every field the advertiser controls
-      const verdict = await moderate([idea, ad?.brand, ad?.product, ad?.cta].filter(Boolean).join(' '));
-      if (!verdict.allowed) return json(res, 422, { error: verdict.reason });
-
-      // Credits are held at bid time; refunded automatically if the slot fails
-      if (store.adjustCredits(user.id, -amount, `bid_${kind}`, null) === null) {
-        return json(res, 402, { error: 'not enough credits' });
-      }
+      // Credits are held at bid time and refunded automatically if the slot
+      // fails. place_bid() debits and inserts in one transaction, so credits
+      // can never be taken without a bid existing.
       const name = ad?.brand || user.email.split('@')[0];
-      const bid = store.addBid({ userId: user.id, name, idea, amount, genre, kind, ad, durationSec });
-      const a = auction.noteBid();
-      chat.systemMessage(`${name} bid ${amount}cr — "${idea.slice(0, 80)}"`);
-      return json(res, 201, { bid: publicBid(bid), credits: store.findUser(user.id).credits, auction: auction.status() });
+      const bid = await db.placeBid({ userId: user.id, name, idea, amount, genre, kind, ad, durationSec });
+      if (!bid) return json(res, 402, { error: 'not enough credits' });
+      const a = await auction.noteBid();
+      await chat.systemMessage(`${name} bid ${amount}cr — "${idea.slice(0, 80)}"`);
+      return json(res, 201, {
+        bid: publicBid(bid),
+        credits: (await db.findUser(user.id)).credits,
+        auction: await auction.status(),
+      });
     }
 
     // --- live chat ---------------------------------------------------------
 
     if (req.method === 'GET' && url.pathname === '/api/chat') {
       return json(res, 200, {
-        messages: chat.since(url.searchParams.get('since') || ''),
+        messages: await chat.since(url.searchParams.get('since') || ''),
         now: Date.now(),
         maxLength: chat.maxLength,
       });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/chat') {
-      const user = currentUser(req);
+      const user = await currentUser(req);
       const b = JSON.parse((await readBody(req)) || '{}');
 
       // Guests may chat under a stable per-browser handle, moderated
@@ -326,7 +335,7 @@ const server = http.createServer(async (req, res) => {
         return json(res, 401, { error: 'sign in to chat' });
       }
 
-      const result = await chat.post(author, b.text);
+      const result = await chat.post(author, b.text, clientIp(req));
       if (result.error) return json(res, 422, { error: result.error });
       return json(res, 201, result, setCookie ? { 'Set-Cookie': setCookie } : {});
     }
@@ -343,14 +352,17 @@ const server = http.createServer(async (req, res) => {
     // --- paid viewer uploads (human-reviewed before airing) ----------------
 
     if (req.method === 'POST' && url.pathname === '/api/upload') {
-      const user = currentUser(req);
+      const user = await currentUser(req);
       if (!user) return json(res, 401, { error: 'sign in to upload a clip' });
 
       const title = String(url.searchParams.get('title') ?? '').trim().slice(0, 60);
       if (!title) return json(res, 400, { error: 'give your clip a title' });
 
       const verdict = await moderate(title);
-      if (!verdict.allowed) return json(res, 422, { error: verdict.reason });
+      if (!verdict.allowed) {
+        await db.logModeration({ userId: user.id, surface: 'upload', text: title, reason: verdict.reason, ip: clientIp(req) });
+        return json(res, 422, { error: verdict.reason });
+      }
 
       const type = String(req.headers['content-type'] ?? '').split(';')[0].toLowerCase();
       if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(type)) {
@@ -404,13 +416,13 @@ const server = http.createServer(async (req, res) => {
         fs.unlink(tmp, () => {});
       }
 
-      if (store.adjustCredits(user.id, -config.uploadCostCredits, 'upload', null) === null) {
+      if ((await db.adjustCredits(user.id, -config.uploadCostCredits, 'upload', null)) === null) {
         return json(res, 402, { error: 'not enough credits' });
       }
 
       // Uploaded video can't be machine-screened the way a prompt can, so it
       // NEVER airs automatically — a human approves it first.
-      const upload = store.addUpload({
+      const upload = await db.addUpload({
         userId: user.id,
         email: user.email,
         file: normalized.file,
@@ -422,23 +434,23 @@ const server = http.createServer(async (req, res) => {
       console.log(`[upload] ${upload.id} "${title}" from ${user.email} — awaiting review`);
       return json(res, 201, {
         upload: { id: upload.id, title: upload.title, status: upload.status, amount: upload.amount },
-        credits: store.findUser(user.id).credits,
+        credits: (await db.findUser(user.id)).credits,
         message: 'uploaded — a human reviews it before it airs',
       });
     }
 
     // Review queue: admin users (ADMIN_EMAILS) or loopback
     if (url.pathname.startsWith('/api/admin/uploads')) {
-      const user = currentUser(req);
+      const user = await currentUser(req);
       const isAdmin = isLoopback(req) || (user && config.adminEmails.includes(user.email));
       if (!isAdmin) return json(res, 403, { error: 'forbidden' });
 
       if (req.method === 'GET') {
-        return json(res, 200, { pending: store.pendingUploads() });
+        return json(res, 200, { pending: await db.pendingUploads() });
       }
       if (req.method === 'POST') {
         const b = JSON.parse((await readBody(req)) || '{}');
-        const decided = store.reviewUpload(b.id, b.approve === true, b.note ?? null);
+        const decided = await db.reviewUpload(b.id, b.approve === true, b.note ?? null);
         if (!decided) return json(res, 404, { error: 'no such upload awaiting review' });
         console.log(`[upload] ${decided.id} ${decided.status}`);
         return json(res, 200, { upload: decided });
@@ -455,9 +467,9 @@ const server = http.createServer(async (req, res) => {
       if (!clipId || !claim || !EMAIL_RE.test(email)) {
         return json(res, 400, { error: 'clipId, a valid contact email, and a description of the claim are required' });
       }
-      const report = store.addDmca({ clipId, reporter: b.reporter ?? 'anonymous', email, claim, ip: clientIp(req) });
+      const report = await db.addDmca({ clipId, reporter: b.reporter ?? 'anonymous', email, claim, ip: clientIp(req) });
       // Pull the clip off air immediately; review happens out of band.
-      const removed = store.removeClip(clipId);
+      const removed = await db.removeClip(clipId);
       console.log(`[dmca] report ${report.id} for clip ${clipId} (removed: ${removed})`);
       return json(res, 201, { reportId: report.id, removedFromAir: removed });
     }
@@ -492,8 +504,10 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+await initStore();
+
 server.listen(config.port, () => {
-  console.log(`📺 Multiverse Cable on http://localhost:${config.port} (backend: ${activeBackend()}, stripe: ${stripeEnabled() ? 'live' : 'demo'})`);
+  console.log(`📺 Multiverse Cable on http://localhost:${config.port} (video: ${activeBackend()}, store: ${db.backend()}, stripe: ${stripeEnabled() ? 'live' : 'demo'})`);
   startScheduler();
   startFreeFeed();
 });

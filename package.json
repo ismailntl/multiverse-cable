@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.60.0",
+    "pg": "^8.23.0",
     "stripe": "^22.6.0"
   }
 }
