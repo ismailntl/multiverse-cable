@@ -1,7 +1,7 @@
 {
   "name": "multiverse-cable",
   "version": "0.1.0",
-  "description": "24/7 AI-generated TV channel powered by MiniMax H3 — viewers bid to program the next slot",
+  "description": "24/7 AI-generated TV channel powered by MiniMax H3 \u2014 viewers bid to program the next slot",
   "type": "module",
   "main": "server.js",
   "scripts": {
@@ -16,5 +16,12 @@
     "@aws-sdk/client-s3": "^3.1121.0",
     "pg": "^8.23.0",
     "stripe": "^22.6.0"
+  },
+  "license": "AGPL-3.0-or-later",
+  "author": "Ismail Nafaa (ismailntl)",
+  "homepage": "https://multiversecable.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ismailntl/multiverse-cable"
   }
 }

@@ -94,3 +94,14 @@ broadcast sync) for free.
   self-hosting H3 when quantized single-GPU builds land.
 - Frontend is one static file ([public/index.html](public/index.html)):
   CRT-styled synced player, bid form, bid board, stats.
+
+## License
+
+**AGPL-3.0-or-later** — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+Use it, fork it, learn from it. Two conditions: if you run it (or a modified
+version) as a network service, you must publish your source; and keep the
+attribution in [NOTICE](NOTICE). If you want to run it commercially without
+the source-disclosure obligation, open an issue.
+
+Built by [Ismail Nafaa](https://github.com/ismailntl) — https://multiversecable.com
