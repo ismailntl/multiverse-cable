@@ -12,6 +12,23 @@
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Multiverse Cable</title>
+<meta name="description" content="A 24/7 channel of AI-generated television. Watch live, guess if each clip is real footage or machine-made, and bid credits to program what airs next.">
+<meta name="theme-color" content="#0b0d14">
+<link rel="canonical" href="https://multiversecable.com">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/icon-512.png" sizes="512x512">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:title" content="Multiverse Cable">
+<meta property="og:description" content="A 24/7 channel of AI-generated television. Watch live, guess if each clip is real footage or machine-made, and bid credits to program what airs next.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://multiversecable.com">
+<meta property="og:image" content="https://multiversecable.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Multiverse Cable">
+<meta name="twitter:description" content="A 24/7 channel of AI-generated television. Watch live, guess if each clip is real footage or machine-made, and bid credits to program what airs next.">
+<meta name="twitter:image" content="https://multiversecable.com/og.png">
 <style>
   :root {
     /* accents (unchanged palette) */
@@ -43,7 +60,18 @@
   }
 
   /* ---------- header ---------- */
-  header { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
+  /* Center-align rather than baseline: the logo and the account pill are
+     different heights and baseline alignment made them sit crooked, with
+     the pill crowding the wordmark on narrow screens. */
+  header { display: flex; align-items: center; gap: 6px 14px; flex-wrap: nowrap;
+    min-width: 0; padding: 10px 0; }
+  header h1 { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+  header .acctbtn { margin-left: auto; flex: 0 0 auto; }
+  /* the mark is an image now, not a coloured block — sized to the wordmark so
+     it rides the same line and never makes the header taller */
+  header .logo { width: 28px; height: 28px; flex: 0 0 auto; align-self: center;
+    display: block; margin-right: -6px; }
   h1 {
     margin: 0; font-family: var(--mono); font-size: 23px; line-height: 1.2;
     letter-spacing: 2.5px; font-weight: 700;
@@ -69,7 +97,7 @@
   #modalBody #acctTitle { display: none; }
   .ticker {
     overflow: hidden; white-space: nowrap; border-top: 1px solid var(--line-soft);
-    border-bottom: 1px solid var(--line-soft); margin: 10px 0 14px; padding: 6px 0;
+    border-bottom: 1px solid var(--line-soft); margin: 8px 0 10px; padding: 5px 0;
     font-family: var(--mono); font-size: 12.5px; letter-spacing: .5px;
     color: var(--amber); background: #0a0d14;
   }
@@ -194,6 +222,7 @@
   .tv.chatover .chyron { padding-right: calc(min(330px, 36%) + 18px); }
   .tv.chatover .tvbtns { right: calc(min(330px, 36%) + 6px); }
   @media (max-width: 760px) {
+    header .sub { display: none; }
     body.cinema .chatcol { position: static; width: auto; padding: 0; }
     body.cinema .chatcol .chatbox { background: var(--panel); }
     .tv.chatover .chyron { padding-right: 14px; }
@@ -662,10 +691,12 @@
   @media (max-width: 760px), (orientation: portrait) and (max-width: 900px) {
     .wrap { max-width: none; margin: 0; padding: 0 0 calc(24px + env(safe-area-inset-bottom));
             display: flex; flex-direction: column; }
-    header { order: 1; gap: 2px 10px;
-             padding: calc(6px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-left))
-                      2px calc(12px + env(safe-area-inset-right)); }
+    /* every pixel above the picture is a pixel off the picture */
+    header { order: 1; gap: 0 10px;
+             padding: calc(3px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-left))
+                      1px calc(12px + env(safe-area-inset-right)); }
     h1 { font-size: 16px; letter-spacing: 1.4px; }
+    header .logo { width: 22px; height: 22px; margin-right: -4px; }
     header .sub { display: none; }
     .layout { order: 2; display: block;
               padding-left: calc(12px + env(safe-area-inset-left));
@@ -690,6 +721,13 @@
     /* typing: unpin the tab bar so nothing sits on the composer */
     body.kbdopen .mtabs { position: static; }
     .tv video { width: 100%; aspect-ratio: var(--clipar, 16/9); height: auto; object-fit: contain; background: #000; }
+    /* The frame still takes the clip's own aspect (--clipar) — nothing is ever
+       cropped and a 4:3 reel still fills the width. What changes on a phone is
+       the floor and the ceiling: a very wide clip gets a taller stage instead
+       of a letterbox slot in the middle of the page, and a very tall one can
+       never push the game strip and the tab bar off the screen.
+       Never in fullscreen: there the picture owns the whole viewport. */
+    body:not(.isfs) .tv video { height: 62svh; max-height: 62svh; aspect-ratio: auto; object-fit: cover; }
     .tvtop { top: 8px; left: 8px; gap: 5px; max-width: calc(100% - 16px); }
     .badge { font-size: 10.5px; letter-spacing: 1px; padding: 4px 8px; overflow: hidden;
              text-overflow: ellipsis; white-space: nowrap; }
@@ -853,7 +891,8 @@
 
 <div class="wrap">
   <header>
-    <h1>▚ MULTIVERSE CABLE</h1>
+    <img class="logo" id="brandLogo" src="/favicon.svg" alt="Multiverse Cable" width="28" height="28" decoding="async">
+    <h1>MULTIVERSE CABLE</h1>
     <span class="sub">∞ channels · one broadcast · bid to program the next dimension</span>
     <button type="button" class="acctbtn" id="acctBtn" aria-haspopup="dialog" aria-expanded="false">
       <span class="who" id="acctBtnWho">Sign in</span><span class="cr" id="acctBtnCr" hidden></span>
@@ -1307,7 +1346,10 @@ function clipSrc(c) { return (c && c.url) ? c.url : ('/videos/' + (c && c.file))
    first. Nothing AI-generated ever finishes unlabelled, and there
    is no switch that keeps the labels off.
    --------------------------------------------------------------- */
-const GAME_REVEAL_MS = 15000;      // hard cap, even for a very long clip
+// No fixed cap: the vote window stays open for the whole clip. The reveal is
+// driven by the clip's own end (timeupdate at duration-0.75s and `ended`),
+// which is also the legal deadline for labelling an AI clip.
+const GAME_REVEAL_MS = 0;          // 0 = no early cutoff
 const GAME_END_LEAD_S = 0.75;      // reveal this far before the clip runs out
 const game = {
   timer: null,
@@ -1347,6 +1389,8 @@ function saveGame() {
 // question on its own — so it stays hidden until the round resolves, leaving
 // the channel number as the only thing on the chyron.
 function renderProvenance() {
+  // Titles are not shown at all: they gave the Real-or-AI answer away and
+  // added nothing the channel number doesn't. Provenance still reveals.
   const c = curClip;
   if (!c) return;
   const b = $('badge'), masked = gameMasking();
@@ -1361,10 +1405,11 @@ function renderProvenance() {
     b.textContent = tag.text;
   }
   b.style.display = b.textContent ? '' : 'none';
+  // Titles are never shown. They gave the Real-or-AI answer away before the
+  // viewer could call it, and the channel number already identifies the slot.
   const t = $('title');
-  t.hidden = masked;
-  t.textContent = masked ? '' : (c.title || '').toUpperCase();
-  $('credit').textContent = masked ? 'title + provenance hidden until you call it' : clipCredit(c);
+  if (t) { t.hidden = true; t.textContent = ''; }
+  $('credit').textContent = masked ? 'provenance hidden until you call it' : clipCredit(c);
 }
 
 // one round per clip — a forced re-tune to the same clip never re-opens it,
@@ -1380,7 +1425,8 @@ function startRound(clip) {
   game.round = past
     ? { clipId: clip.id, truth, eligible: !!truth, voted: past.voted, correct: past.correct, revealed: true }
     : { clipId: clip.id, truth, eligible: !!truth, voted: null, correct: null, revealed: !truth };
-  if (gameMasking()) game.timer = setTimeout(autoReveal, GAME_REVEAL_MS);
+  // 0 means no early cutoff — the clip's own end drives the reveal.
+  if (gameMasking() && GAME_REVEAL_MS > 0) game.timer = setTimeout(autoReveal, GAME_REVEAL_MS);
   renderProvenance();
   renderGame();
 }
@@ -2282,7 +2328,25 @@ function setMode(m) {
 on('tabShow', () => setMode('show'));
 on('tabAd', () => setMode('ad'));
 
+/* MONEY: one idempotency key per bid attempt.
+   POST /api/bid takes an optional idemKey; place_bid() returns the ORIGINAL bid
+   for a repeat of the same key instead of debiting again. So the key is minted
+   once per bid being composed and REUSED for every retry of that same bid — a
+   dropped connection, a double tap, a second press — and only retired once the
+   bid has actually been accepted. The disabled button below is the UX guard;
+   this is the correctness one, and neither is a substitute for the other. */
+let bidKey = null, bidBusy = false;
+function newIdemKey() {
+  try { if (crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID(); } catch {}
+  return 'bid-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+}
+function bidIdemKey() { if (!bidKey) bidKey = newIdemKey(); return bidKey.slice(0, 64); }
+// composing a bid mints the key up front; after one lands the next keystroke
+// is the start of a different bid and gets a key of its own
+if ($('idea')) $('idea').addEventListener('input', bidIdemKey);
+
 on('bidBtn', async () => {
+  if (bidBusy) return;                 // a second press is the same bid, not a new one
   const m = $('bidMsg'); m.className = 'msg'; m.textContent = '';
   const sec = slotSec();
   const amount = Number($('amount').value);
@@ -2296,11 +2360,13 @@ on('bidBtn', async () => {
     }
   }
   const btn = $('bidBtn'), label = btn.textContent;
+  bidBusy = true;
   btn.disabled = true; btn.textContent = 'Placing…';
   try {
     const body = {
       kind: mode, idea: $('idea').value, amount,
       genre: $('genre').value || undefined,
+      idemKey: bidIdemKey(),
     };
     if (sec) body.durationSec = sec;
     if (mode === 'ad') { body.brand = $('brand').value; body.product = $('product').value; body.cta = $('cta').value; }
@@ -2314,11 +2380,15 @@ on('bidBtn', async () => {
         ? `Highest bid when the clock hits zero (${left}s) programs the slot.`
         : 'Highest bid when the window closes programs the slot.');
     m.className = 'msg ok';
+    bidKey = null;                     // accepted — the next bid is a new bid
     $('idea').value = ''; $('amount').value = '';
     updatePricing(true);
     refresh();
-  } catch (e) { m.textContent = '✗ ' + e.message; m.className = 'msg err'; }
-  finally { btn.disabled = false; btn.textContent = label; }
+  } catch (e) {
+    // the key survives on purpose: retrying this bid must not charge twice
+    m.textContent = '✗ ' + e.message; m.className = 'msg err';
+  }
+  finally { bidBusy = false; btn.disabled = false; btn.textContent = label; }
 });
 
 // ---- upload ----
