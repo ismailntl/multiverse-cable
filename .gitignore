@@ -11,3 +11,5 @@ docs/hostinger-env.txt
 promo/
 supabase/.temp/
 data/stream-cache/
+.env.bak*
+.env.*.bak

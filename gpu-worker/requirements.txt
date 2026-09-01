@@ -1,6 +1,10 @@
 torch
-diffusers>=0.32
-transformers
+torchvision
+# LTX-2.5 needs a Gemma-4 text encoder and the ltx2 pipeline, neither of which
+# is in any released transformers/diffusers. Both live only on git main, and
+# without them the worker silently falls back to an older model.
+git+https://github.com/huggingface/transformers
+git+https://github.com/huggingface/diffusers
 accelerate
 sentencepiece
 imageio[ffmpeg]

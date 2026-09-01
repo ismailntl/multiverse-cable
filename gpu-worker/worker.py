@@ -15,6 +15,7 @@ makes bulk generation affordable.
 """
 
 import os
+import pathlib
 import tempfile
 import threading
 import traceback
@@ -44,7 +45,6 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 # the family evolves.
 ALL_CANDIDATES = [
     ("Lightricks/LTX-2.5-Diffusers", "auto", 8, 40),
-    ("Lightricks/LTX-2.3", "auto", 8, 40),
     ("Lightricks/LTX-2", "auto", 8, 40),
     ("Lightricks/LTX-Video-0.9.8-13B-distilled", "LTXPipeline", 8, 40),
     ("Lightricks/LTX-Video-0.9.5", "LTXPipeline", 40, 16),
@@ -96,6 +96,13 @@ def _load_fp8_ltx2(repo, torch_dtype):
     return pipe
 
 
+def _touch_activity():
+    try:
+        pathlib.Path("/tmp/mc-last-activity").touch()
+    except OSError:
+        pass
+
+
 def get_pipe():
     global _pipe
     if _pipe is not None:
@@ -113,6 +120,7 @@ def get_pipe():
                 errors.append(f"{repo}: diffusers has no {pipe_cls_name}")
                 continue
             print(f"[worker] trying {repo} ({pipe_cls_name})", flush=True)
+            _touch_activity()  # loading is work; keep the idle watchdog off our back
             if os.environ.get("USE_FP8") == "1" and "LTX-2" in repo:
                 try:
                     pipe = _load_fp8_ltx2(repo, torch.bfloat16)

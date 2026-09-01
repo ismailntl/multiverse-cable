@@ -117,7 +117,7 @@ systemctl daemon-reload && systemctl enable --now mc-worker
 cat > /opt/mc/watchdog.sh <<'WDEOF'
 #!/bin/bash
 up=\$(cut -d. -f1 /proc/uptime)
-[ "\$up" -lt 3600 ] && exit 0
+[ "\$up" -lt 7200 ] && exit 0
 f=/tmp/mc-last-activity
 if [ ! -f "\$f" ] || [ \$(( \$(date +%s) - \$(stat -c %Y "\$f") )) -gt 2700 ]; then
   shutdown -h now "mc idle watchdog"
