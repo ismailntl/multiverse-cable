@@ -24,7 +24,14 @@ MODEL_ID="${MODEL_ID:-}"                    # pin a repo; empty = worker autodet
 PIPELINE="${PIPELINE:-auto}"
 STEPS="${STEPS:-8}"                         # distilled checkpoints sample in ~8
 AI_TARGET="${AI_TARGET:-}"                  # terminate once library hits this
-PLATFORM_URL="${PLATFORM_URL:-https://multiversecable.com}"   # LTX-2 weights + HF cache; 300 was too tight for LTX-2.5
+PLATFORM_URL="${PLATFORM_URL:-https://multiversecable.com}"
+# Model weights are ~187GB and take ~25min to pull from HuggingFace, which is
+# dead instance time on every launch. Cache them in S3 instead: same-region
+# transfer is free, sync is far faster, and unlike an EBS volume it is not
+# pinned to one AZ -- which matters, because GPU capacity dictates the AZ.
+S3_BUCKET="${S3_BUCKET:-$(grep -oE '^S3_BUCKET=.*' "$ROOT/.env" 2>/dev/null | cut -d= -f2)}"
+CACHE_KEY="${CACHE_KEY:-$(printf %s "${MODEL_ID:-default}" | tr '/:' '__')}"
+IAM_PROFILE="${IAM_PROFILE:-mc-gpu-worker}"   # LTX-2 weights + HF cache; 300 was too tight for LTX-2.5
 ITYPE="${ITYPE:-g6e.xlarge}"
 COUNT="${COUNT:-1}"
 MARKET="${MARKET:-on-demand}"
@@ -113,7 +120,36 @@ RestartSec=20
 [Install]
 WantedBy=multi-user.target
 SVCEOF
+mkdir -p /opt/mc/hf
+command -v aws >/dev/null 2>&1 || apt-get install -y awscli || ./venv/bin/pip install awscli
+if [ -n "$S3_BUCKET" ]; then
+  echo "warm-start: syncing model cache from s3://$S3_BUCKET/model-cache/$CACHE_KEY"
+  aws s3 sync "s3://$S3_BUCKET/model-cache/$CACHE_KEY" /opt/mc/hf --only-show-errors || true
+  du -sh /opt/mc/hf || true
+fi
 systemctl daemon-reload && systemctl enable --now mc-worker
+
+# Once the model actually loads, push the cache back so the next launch is warm.
+cat > /opt/mc/cache-push.sh <<'CPEOF'
+#!/bin/bash
+[ -f /opt/mc/.cache-pushed ] && exit 0
+[ -z "\$S3_BUCKET" ] && exit 0
+for i in \$(seq 1 360); do
+  if curl -fsS --max-time 10 http://127.0.0.1:8189/health 2>/dev/null | grep -q '"ok": *true'; then
+    logger -t mc "model loaded, pushing cache to s3"
+    aws s3 sync /opt/mc/hf "s3://\$S3_BUCKET/model-cache/\$CACHE_KEY" --only-show-errors \
+      && touch /opt/mc/.cache-pushed && logger -t mc "cache pushed"
+    exit 0
+  fi
+  sleep 30
+done
+CPEOF
+chmod +x /opt/mc/cache-push.sh
+cat > /etc/default/mc-cache <<'CDEOF'
+S3_BUCKET=$S3_BUCKET
+CACHE_KEY=$CACHE_KEY
+CDEOF
+echo '*/10 * * * * root . /etc/default/mc-cache && /opt/mc/cache-push.sh' > /etc/cron.d/mc-cache
 cat > /opt/mc/watchdog.sh <<'WDEOF'
 #!/bin/bash
 up=\$(cut -d. -f1 /proc/uptime)
@@ -171,6 +207,7 @@ for PAIR in $SUBNETS; do
       --block-device-mappings "DeviceName=/dev/sda1,Ebs={VolumeSize=$DISK_GB,VolumeType=gp3,DeleteOnTermination=true}" \
       --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$NAME},{Key=project,Value=multiverse-cable}]" \
       --instance-initiated-shutdown-behavior terminate \
+      --iam-instance-profile "Name=$IAM_PROFILE" \
       --user-data "$USERDATA" \
       --query 'Instances[].InstanceId' --output text 2>/tmp/mc-launch-err); then
     echo "launched in $AZ"

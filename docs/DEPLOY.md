@@ -85,3 +85,23 @@ pooler — the pooler rejected `postgres.<ref>` as an unknown tenant.)
 `.env` is gitignored and `.githooks/pre-commit` refuses to commit anything
 shaped like a live credential. On a new clone: `git config core.hooksPath .githooks`.
 Rotate any key that has ever been pasted into a chat or terminal transcript.
+
+## Model weight cache (S3)
+
+Model weights are ~187GB and take ~25 minutes to pull from HuggingFace — dead
+instance time on every launch, at GPU hourly rates.
+
+They are cached in `s3://$S3_BUCKET/model-cache/<model-id>/` instead. On boot
+the instance syncs from there before starting the worker; once the model
+actually loads, a cron job pushes the cache back (guarded by a marker file so
+it only happens once).
+
+**Why S3 and not a persistent EBS volume:** EBS volumes are pinned to a single
+Availability Zone. GPU capacity is scarce and dictates which AZ you can launch
+in — p5.4xlarge was exhausted in all six us-east-1 AZs on 2026-08-31, and the
+run landed on whichever AZ had room. A cache volume in the wrong AZ is useless.
+S3 is region-wide, same-region transfer is free, and it is roughly a fifth the
+cost of keeping the volume around.
+
+Access is via the `mc-gpu-worker` IAM instance profile, scoped to the
+`model-cache/*` prefix only — no credentials in user-data.
