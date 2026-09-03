@@ -10,7 +10,7 @@ import * as auction from './lib/auction.js';
 import * as playout from './lib/playout.js';
 import { startFreeFeed } from './lib/freefeed.js';
 import { activeBackend, transcodeUpload } from './lib/generate.js';
-import { s3Enabled } from './lib/storage.js';
+import { s3Enabled, credentialStatus } from './lib/storage.js';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { moderate } from './lib/moderation.js';
@@ -18,6 +18,13 @@ import { GENRES } from './lib/shows.js';
 import { createCheckout, findPack, handleWebhook, stripeEnabled } from './lib/payments.js';
 import { minimumBid, priceTable, quote } from './lib/pricing.js';
 import { check as rateCheck, LIMITS } from './lib/ratelimit.js';
+
+// An unknown channel falls back to main rather than erroring, so a stale link
+// keeps working after a channel is renamed or removed.
+function channelParam(url) {
+  const c = url.searchParams.get('channel');
+  return c && playout.CHANNELS[c] ? c : 'main';
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -174,11 +181,15 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/now') {
       markViewer(req);
-      const now = playout.nowPlaying();
+      // Each channel is its own synced lane over the same library, so everyone
+      // watching ?channel=shopping sees the same segment at the same moment.
+      const ch = channelParam(url);
+      const now = playout.nowPlaying(ch);
       return json(res, 200, {
         viewers: viewerCount(),
+        channel: ch,
         now: now ? { clip: publicClip(now.clip), offset: Math.round(now.offset * 10) / 10 } : null,
-        upNext: playout.upNext(3).map((u) => ({ clip: publicClip(u.clip), startsAt: u.startsAt, paid: u.priority })),
+        upNext: playout.upNext(3, ch).map((u) => ({ clip: publicClip(u.clip), startsAt: u.startsAt, paid: u.priority })),
         serverTime: Date.now(),
       });
     }
@@ -187,7 +198,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/recent') {
       const n = Math.min(30, Math.max(1, parseInt(url.searchParams.get('n') ?? '12', 10)));
       return json(res, 200, {
-        clips: playout.history(n).map((h) => ({ ...publicClip(h.clip), airedAt: h.startedAt, paid: h.priority })),
+        clips: playout.history(n, channelParam(url))
+          .map((h) => ({ ...publicClip(h.clip), airedAt: h.startedAt, paid: h.priority })),
       });
     }
 
@@ -204,11 +216,15 @@ const server = http.createServer(async (req, res) => {
           bucket: config.s3Bucket || null,
           cdn: config.cdnBase || null,
           unstored: db.clips().filter((c) => !c.url).length,
+          credentials: await credentialStatus(),
         },
         stats: await db.stats(),
         nextSlot: pending[0] ? publicBid(pending[0]) : null,
         pendingBids: pending.slice(0, 20).map(publicBid),
-        recentClips: playout.history(12).map((h) => ({ ...publicClip(h.clip), airedAt: h.startedAt, paid: h.priority })),
+        channel: channelParam(url),
+        channels: Object.entries(playout.CHANNELS).map(([key, c]) => ({ key, label: c.label })),
+        recentClips: playout.history(12, channelParam(url))
+          .map((h) => ({ ...publicClip(h.clip), airedAt: h.startedAt, paid: h.priority })),
         genIntervalSec: config.genIntervalSec,
         genres: GENRES.map((g) => ({ key: g.key, label: g.label })),
         packs: config.creditPacks,

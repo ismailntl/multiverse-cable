@@ -174,6 +174,10 @@
      Real-or-AI moved off the video entirely and lives under it */
   .tvbottom { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
               pointer-events: none; display: flex; flex-direction: column; align-items: flex-start; }
+  /* An ad has to be identifiable as an ad while it plays. */
+  .adbadge { margin-left: 8px; padding: 1px 7px; border-radius: 4px; font-weight: 800;
+    font-size: 11px; letter-spacing: 1.2px; background: var(--amber); color: #1a1206;
+    text-transform: uppercase; }
   .chyron { align-self: stretch; pointer-events: none; padding: 40px 14px 11px;
     background: linear-gradient(transparent, #000b 45%, #000f);
     display: grid; gap: 3px; font-family: var(--mono); font-size: 14px;
@@ -990,7 +994,7 @@
             <div class="tvtop">
               <div class="badge" id="badge">● LIVE</div>
               <div class="livestat" id="liveStat" aria-live="polite">
-                <span class="dot"></span><span id="liveLabel">LIVE</span>
+                <span class="dot"></span><span id="liveLabel">LIVE</span><span id="adBadge" class="adbadge" hidden>AD</span>
               </div>
             </div>
             <div class="tvbtns">
@@ -1513,6 +1517,7 @@ function playRewind(i) {
   currentClipId = c.id;
   tv.classList.add('tuning');
   $('ch').textContent = 'CH ' + c.channel;
+  setAdBadge(c);
   // a clip already called keeps its verdict; one never called can be called now
   startRound(c);
   player.src = clipSrc(c);
@@ -1719,6 +1724,7 @@ async function tune(force = false, heartbeat = false) {
     currentClipId = now.clip.id;
     tv.classList.add('tuning');
     $('ch').textContent = 'CH ' + now.clip.channel;
+    setAdBadge(now.clip);
     // the title is written by renderProvenance — it is masked until the reveal
     startRound(now.clip);
 
@@ -1768,6 +1774,17 @@ player.addEventListener('error', () => {
    while the viewer is watching something that already aired.
    --------------------------------------------------------------- */
 let viewers = null;
+
+// Paid ads and shopping segments are labelled on the picture while they run, so
+// a sales pitch is never mistaken for programming.
+function setAdBadge(c) {
+  const el = $('adBadge');
+  if (!el) return;
+  const paidAd = c && c.isAd;
+  const shopping = c && c.genre === 'live-shopping';
+  el.hidden = !(paidAd || shopping);
+  el.textContent = paidAd ? 'AD' : 'LIVE SHOPPING';
+}
 
 // The viewer count is hidden for now. setViewers still records it and the API
 // still sends it, so restoring the badge means re-adding the span and one line
@@ -2555,11 +2572,11 @@ function setMode(m) {
   $('idea').placeholder = m === 'ad'
     ? 'e.g. the mattress absorbs your regrets while a spokesman weeps with joy'
     : 'e.g. a cooking show where the ingredients cook the chef';
-  $('bidBtn').textContent = m === 'ad' ? 'Buy this ad slot' : 'Place bid';
+  $('bidBtn').textContent = m === 'ad' ? 'Buy this shopping slot' : 'Place bid';
   // the phone's Ad tab shows this same panel, so its heading has to say so
-  $('bidPanelTitle').textContent = m === 'ad' ? 'Buy an ad slot' : 'Bid for the next slot';
+  $('bidPanelTitle').textContent = m === 'ad' ? 'Sell it on Live Shopping' : 'Bid for the next slot';
   $('bidPanelHint').textContent = m === 'ad'
-    ? 'A paid ad for a fictional brand. Bids collect for a short window — the highest bid when the clock hits zero takes the slot.'
+    ? 'A pitchman sells your invented product live on air — price burst, countdown, the lot. Highest bid when the clock hits zero takes the slot.'
     : 'Bids collect for a short window — the highest bid when the clock hits zero programs the next slot.';
   updatePricing(true);
 }
