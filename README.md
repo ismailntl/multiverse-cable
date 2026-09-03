@@ -29,8 +29,10 @@ unauthenticated endpoint must not be able to erase a channel), and content
 moderation across 12 languages with nothing involving minors, enforced in five
 layers.
 
-See [docs/POLICY.md](docs/POLICY.md) for the content rules and
-[docs/COSTS.md](docs/COSTS.md) for what it costs to run.
+See [docs/POLICY.md](docs/POLICY.md) for the content rules,
+[docs/COSTS.md](docs/COSTS.md) for what it costs to run,
+[docs/PRODUCT_ADS.md](docs/PRODUCT_ADS.md) for the paid product-ad design, and
+[docs/STREAMING.md](docs/STREAMING.md) for restreaming to Twitch/Kick.
 
 ## How it works
 
