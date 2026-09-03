@@ -10,6 +10,7 @@ import * as auction from './lib/auction.js';
 import * as playout from './lib/playout.js';
 import { startFreeFeed } from './lib/freefeed.js';
 import { activeBackend, transcodeUpload } from './lib/generate.js';
+import { s3Enabled } from './lib/storage.js';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { moderate } from './lib/moderation.js';
@@ -198,6 +199,12 @@ const server = http.createServer(async (req, res) => {
         batch: batchStatus(),
         libraryClips: db.clips().length,
         aiClips: await db.generatedCount(),
+        storage: {
+          s3: s3Enabled(),
+          bucket: config.s3Bucket || null,
+          cdn: config.cdnBase || null,
+          unstored: db.clips().filter((c) => !c.url).length,
+        },
         stats: await db.stats(),
         nextSlot: pending[0] ? publicBid(pending[0]) : null,
         pendingBids: pending.slice(0, 20).map(publicBid),
