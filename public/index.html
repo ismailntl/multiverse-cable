@@ -188,6 +188,7 @@
   .prodprev .pp-p { color: var(--green); font-family: var(--mono); font-size: 12px; }
   .checkline { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--dim); }
   .checkline input { margin-top: 2px; flex: 0 0 auto; }
+  .checkline span { flex: 1 1 auto; min-width: 0; }   /* was overflowing its row */
   /* An ad has to be identifiable as an ad while it plays. */
   .adbadge { margin-left: 8px; padding: 1px 7px; border-radius: 4px; font-weight: 800;
     font-size: 11px; letter-spacing: 1.2px; background: var(--amber); color: #1a1206;
@@ -1086,7 +1087,6 @@
       <nav class="mtabs" id="mtabs" role="tablist" aria-label="Sections">
         <button type="button" role="tab" data-tab="bid" aria-selected="true" class="on">Bid</button>
         <button type="button" role="tab" data-tab="ad" aria-selected="false">Ad</button>
-        <button type="button" role="tab" data-tab="upload" aria-selected="false">Upload</button>
         <button type="button" role="tab" data-tab="chat" aria-selected="false">Chat</button>
       </nav>
 
@@ -1127,12 +1127,14 @@
               <input type="checkbox" id="ownsProduct">
               <span>I own this product or am authorised to advertise it and its branding.</span>
             </label>
-            <label class="field">Fictional brand
-              <input id="brand" maxlength="40" placeholder="e.g. GlorpCo">
-            </label>
-            <label class="field">What it sells
-              <input id="product" maxlength="80" placeholder="e.g. sentient mattresses">
-            </label>
+            <div id="inventedFields" style="display:contents">
+              <label class="field">Fictional brand
+                <input id="brand" maxlength="40" placeholder="e.g. GlorpCo">
+              </label>
+              <label class="field">What it sells
+                <input id="product" maxlength="80" placeholder="e.g. sentient mattresses">
+              </label>
+            </div>
             <label class="field">Call to action
               <input id="cta" maxlength="80" placeholder="e.g. Call now, dimension 7">
             </label>
@@ -1156,33 +1158,6 @@
       </div>
 
       <!-- paid uploads are their own tab now, and never part of the sign-in modal -->
-      <div class="panel" id="uploadPanel" data-mtab="upload">
-        <h2>Upload your own clip</h2>
-        <p class="hint">Put your own footage on the channel — a paid slot.</p>
-        <div id="uploadOut" class="msg">Sign in to upload a clip —
-          <button type="button" class="linkish" id="uploadSignIn">sign in or create an account</button>.</div>
-        <div id="uploadIn" style="display:none">
-          <div class="costline" id="uploadCost"></div>
-          <form id="uploadForm" onsubmit="return false" style="margin-top:14px">
-            <label class="field">Video file
-              <input id="uploadFile" type="file" accept="video/mp4,video/webm,video/quicktime">
-            </label>
-            <label class="field">Clip title
-              <input id="uploadTitle" maxlength="60" placeholder="max 60 characters">
-            </label>
-            <div class="note">Uploads are <b>reviewed by a human before they air</b>. Nothing goes
-              out live the moment you upload it — you'll see the status below once it's decided.</div>
-            <button class="go" type="button" id="uploadBtn">Upload clip</button>
-            <div class="bar" id="uploadBar" style="display:none"><i></i></div>
-            <div class="msg" id="uploadMsg"></div>
-          </form>
-          <div id="myUploadsWrap" style="display:none;margin-top:18px">
-            <h2 style="margin-bottom:12px">Your uploads</h2>
-            <ul class="list" id="myUploads"></ul>
-          </div>
-        </div>
-      </div>
-
       <div class="panel" data-mtab="bid ad">
         <h2>Next slot goes to</h2>
         <div class="nextslot" id="nextslot"><span class="empty">Nobody yet — the machine picks a random dimension.</span></div>
@@ -1258,14 +1233,6 @@ acctStash = document.createElement('div');
 acctStash.appendChild($('acctHost'));
 let acctOpen = false;
 let currentClipId = null, mode = 'show', authMode = 'login', state = {};
-
-// sensible fallbacks until /api/state ships the upload config
-const UPLOAD_DEFAULTS = { cost: 50, sec: 30, mb: 100 };
-const uploadCfg = () => ({
-  cost: Number(state.uploadCost ?? UPLOAD_DEFAULTS.cost),
-  sec: Number(state.maxUploadSec ?? UPLOAD_DEFAULTS.sec),
-  mb: Number(state.maxUploadMb ?? UPLOAD_DEFAULTS.mb),
-});
 
 async function api(url, opts) {
   const r = await fetch(url, opts);
@@ -1421,7 +1388,6 @@ on('modalOk', async () => {
 });
 on('modalCancel', () => closeModal());
 on('acctBtn', openAccountModal);
-on('uploadSignIn', openAccountModal);
 $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) closeModal(); });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && $('modal').classList.contains('show')) closeModal();
@@ -2627,11 +2593,16 @@ function setMode(m) {
     : 'Bids collect for a short window — the highest bid when the clock hits zero programs the next slot.';
   updatePricing(true);
 }
+function setInvented(show) {
+  const el = $('inventedFields');
+  if (el) el.style.display = show ? 'contents' : 'none';
+}
+
 let productLookupSeq = 0;
 async function previewProduct() {
   const el = $('productPreview'), owns = $('ownsLine');
   const url = $('productUrl').value.trim();
-  if (!url) { el.hidden = true; owns.hidden = true; return; }
+  if (!url) { el.hidden = true; owns.hidden = true; setInvented(true); return; }
   const seq = ++productLookupSeq;
   el.hidden = false;
   el.innerHTML = '<div class="pp-t">Reading that page…</div>';
@@ -2647,10 +2618,15 @@ async function previewProduct() {
       `<div><div class="pp-t">${(p.title || 'Unnamed product')}</div>` +
       `<div class="pp-p">${p.price || 'no price found'} · ${p.site || ''}</div></div>`;
     owns.hidden = false;
+    // A real product supplies its own name and price, so the invented-brand
+    // fields would only contradict it.
+    setInvented(false);
+    $('idea').placeholder = 'anything the pitchman should say about it — optional';
   } catch (e) {
     if (seq !== productLookupSeq) return;
     el.innerHTML = `<div class="pp-t">Couldn't read that link — ${e.message}</div>`;
     owns.hidden = true;
+    setInvented(true);            // fall back to describing it by hand
   }
 }
 let productTimer = null;
@@ -2735,40 +2711,6 @@ on('bidBtn', async () => {
 });
 
 // ---- upload ----
-on('uploadBtn', async () => {
-  const m = $('uploadMsg'), bar = $('uploadBar'), btn = $('uploadBtn');
-  m.className = 'msg'; m.textContent = '';
-  const cfg = uploadCfg();
-  const file = $('uploadFile').files && $('uploadFile').files[0];
-  const title = $('uploadTitle').value.trim();
-
-  const fail = (t) => { m.textContent = '✗ ' + t; m.className = 'msg err'; };
-  if (!file) return fail('Pick a video file first (mp4, webm, or mov).');
-  if (!title) return fail('Give your clip a title.');
-  if (file.size > cfg.mb * 1024 * 1024) {
-    return fail(`That file is ${(file.size / 1048576).toFixed(1)} MB — the limit is ${cfg.mb} MB. Trim or re-encode it and try again.`);
-  }
-
-  btn.disabled = true; btn.textContent = 'Uploading…';
-  bar.style.display = 'block';
-  m.textContent = 'Uploading — this can take a minute on a slow connection. Keep this tab open.';
-  m.className = 'msg';
-  try {
-    const r = await api('/api/upload?title=' + encodeURIComponent(title), {
-      method: 'POST',
-      headers: { 'Content-Type': file.type || 'application/octet-stream' },
-      body: file,
-    });
-    const st = r.upload && r.upload.status ? r.upload.status : 'pending_review';
-    m.innerHTML = `✓ Uploaded — status: <b>${esc(statusLabel(st))}</b>. It is reviewed by a human before it airs.` +
-      (r.credits !== undefined ? ` ${esc(String(r.credits))} credits left.` : '');
-    m.className = 'msg ok';
-    toast('Clip uploaded. It will air once a human approves it.', 'ok');
-    $('uploadFile').value = ''; $('uploadTitle').value = '';
-    refresh();
-  } catch (e) { fail(e.message); }
-  finally { btn.disabled = false; btn.textContent = 'Upload clip'; bar.style.display = 'none'; }
-});
 function statusLabel(s) {
   return s === 'pending_review' ? 'awaiting review' : s === 'approved' ? 'approved' : s === 'rejected' ? 'rejected' : s;
 }
@@ -2841,25 +2783,6 @@ async function refresh() {
           $('packs').appendChild(btn);
         }
       }
-    }
-
-    // upload panel
-    const cfg = uploadCfg();
-    $('uploadIn').style.display = s.user ? 'block' : 'none';
-    $('uploadOut').style.display = s.user ? 'none' : 'block';
-    $('uploadCost').innerHTML =
-      `<span>cost: <b>${esc(String(cfg.cost))} credits</b></span>` +
-      `<span>max length: <b>${esc(String(cfg.sec))}s</b></span>` +
-      `<span>max size: <b>${esc(String(cfg.mb))} MB</b></span>`;
-
-    const ups = Array.isArray(s.myUploads) ? s.myUploads : [];
-    $('myUploadsWrap').style.display = ups.length ? 'block' : 'none';
-    if (ups.length) {
-      $('myUploads').innerHTML = ups.map(u =>
-        `<li><span class="what">${esc(u.title)}</span>` +
-        `<span class="pill ${u.status === 'approved' ? 'approved' : u.status === 'rejected' ? 'rejected' : 'pending'}">` +
-        `${esc(statusLabel(u.status))}</span>` +
-        `<span class="amt">${esc(String(u.amount ?? ''))}${u.amount != null ? 'cr' : ''}</span></li>`).join('');
     }
 
     // genres
