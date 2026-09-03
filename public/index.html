@@ -175,6 +175,11 @@
      Real-or-AI moved off the video entirely and lives under it */
   .tvbottom { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
               pointer-events: none; display: flex; flex-direction: column; align-items: flex-start; }
+  .chanpick { display: flex; gap: 0; border: 1px solid #ffffff2e; border-radius: 999px;
+    overflow: hidden; background: #000000a6; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .chanpick button { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 5px 11px;
+    background: transparent; color: var(--dim); border: 0; cursor: pointer; }
+  .chanpick button.on { background: var(--amber); color: #1a1206; font-weight: 700; }
   .hintlite { color: var(--faint); font-weight: 400; font-size: 11px; }
   .prodprev { display: flex; gap: 10px; align-items: center; padding: 8px; border: 1px solid var(--line);
     border-radius: 8px; background: var(--panel-2); }
@@ -1000,6 +1005,10 @@
           <div class="static"></div>
           <div class="tvui" id="tvui">
             <div class="tvtop">
+              <div class="chanpick">
+                <button type="button" data-chan="main" class="on">ALL</button>
+                <button type="button" data-chan="shopping">ADS ONLY</button>
+              </div>
               <div class="badge" id="badge">● LIVE</div>
               <div class="livestat" id="liveStat" aria-live="polite">
                 <span class="dot"></span><span id="liveLabel">LIVE</span><span id="adBadge" class="adbadge" hidden>AD</span>
@@ -1512,7 +1521,7 @@ function renderRewind() {
 async function pollRecent() {
   if (!rewind.available) return;
   try {
-    const r = await fetch('/api/recent?n=' + REWIND_N);
+    const r = await fetch('/api/recent?n=' + REWIND_N + (channel === 'main' ? '' : '&channel=' + channel));
     if (r.status === 404) {            // no rewind on this deployment — hide, never error
       rewind.available = false;
       rewind.clips = [];
@@ -1726,9 +1735,31 @@ renderGame();
 // heartbeat = keep the live pointer, the clock skew and the viewer count fresh
 // without ever touching the player. That is the only /api/now work done while
 // the viewer is rewound.
+// Which playout lane this viewer is watching. Each is its own synced schedule
+// on the server, so everyone on a channel sees the same clip at the same time.
+let channel = (() => {
+  try { return localStorage.getItem('mc.channel') === 'shopping' ? 'shopping' : 'main'; }
+  catch { return 'main'; }
+})();
+const chq = () => (channel === 'main' ? '' : '?channel=' + channel);
+
+function setChannel(next) {
+  if (next === channel) return;
+  channel = next;
+  try { localStorage.setItem('mc.channel', next); } catch {}
+  document.querySelectorAll('[data-chan]').forEach((b) => {
+    b.classList.toggle('on', b.dataset.chan === channel);
+  });
+  // Switching lanes means a different clip is on air; drop the rewind and retune.
+  rewind.active = false;
+  currentClipId = null;
+  renderRewind();
+  tune(true);
+}
+
 async function tune(force = false, heartbeat = false) {
   try {
-    const b0 = await api('/api/now');
+    const b0 = await api('/api/now' + chq());
     const now = b0.now;
     setViewers(b0.viewers);
     if (typeof b0.serverTime === 'number') serverSkew = b0.serverTime - Date.now();
@@ -2626,6 +2657,11 @@ let productTimer = null;
 $('productUrl')?.addEventListener('input', () => {
   clearTimeout(productTimer);
   productTimer = setTimeout(previewProduct, 600);   // debounce while typing
+});
+
+document.querySelectorAll('[data-chan]').forEach((b) => {
+  b.onclick = () => setChannel(b.dataset.chan);
+  b.classList.toggle('on', b.dataset.chan === channel);
 });
 
 on('tabShow', () => setMode('show'));
