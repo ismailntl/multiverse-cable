@@ -63,3 +63,20 @@ box is saturated and cost is flat — the more you generate, the bigger the win.
 
 **Bottom line: ~$1.4–1.5k/mo on-demand (≈$50/day) instead of ~$7k/day** —
 a ~150× reduction — and it burns credits, not cash.
+
+## fal model choice (2026-09)
+
+| Model | 768p price | Speed | Notes |
+|---|---|---|---|
+| `minimax/h3-max-turbo/image-to-video` | **$0.01/s** promo → $0.04/s after 2026-09-07 | 2x H3 Max | ~97th percentile of H3 Max quality. **Default.** |
+| `minimax/h3-max/image-to-video` | $0.08/s | baseline | 4-8x the cost for a marginal quality gain |
+
+A 15s clip costs ~$0.15 on Turbo at promo pricing and ~$0.60 after, against
+~$1.20 on plain H3 Max. Both cap a single render at 15s; longer clips are
+stitched from segments (see `falGenerateLong` in lib/generate.js).
+
+**H3 Max Live / H3 Max Director** is the autoregressive continuous model behind
+fal.live, with up to two minutes of context. It is a live session product rather
+than a queue endpoint, so it does not drop into this codebase's
+submit-and-poll flow. Worth revisiting if the channel ever moves to genuinely
+continuous generation rather than discrete clips.
