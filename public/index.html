@@ -990,7 +990,7 @@
             <div class="tvtop">
               <div class="badge" id="badge">● LIVE</div>
               <div class="livestat" id="liveStat" aria-live="polite">
-                <span class="dot"></span><span id="liveLabel">LIVE</span><span class="vw" id="viewerCount"></span>
+                <span class="dot"></span><span id="liveLabel">LIVE</span>
               </div>
             </div>
             <div class="tvbtns">
@@ -1769,10 +1769,9 @@ player.addEventListener('error', () => {
    --------------------------------------------------------------- */
 let viewers = null;
 
-function viewerText(n) {
-  if (n == null) return '';
-  return ' · ' + (n === 0 ? 'nobody watching' : n === 1 ? '1 person watching' : n + ' watching');
-}
+// The viewer count is hidden for now. setViewers still records it and the API
+// still sends it, so restoring the badge means re-adding the span and one line
+// in renderLiveStat.
 function setViewers(n) {
   const v = Number(n);
   if (n == null || !Number.isFinite(v)) return;
@@ -1781,7 +1780,6 @@ function setViewers(n) {
 }
 function renderLiveStat() {
   $('liveLabel').textContent = rewind.active ? 'REWIND' : 'LIVE';
-  $('viewerCount').textContent = viewerText(viewers);
 }
 renderLiveStat();
 
