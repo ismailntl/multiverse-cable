@@ -218,6 +218,7 @@ const server = http.createServer(async (req, res) => {
           cdn: config.cdnBase || null,
           unstored: db.clips().filter((c) => !c.url).length,
           credentials: await credentialStatus(),
+          generationHalted: s3Enabled() && !(await credentialStatus()).resolved,
         },
         stats: await db.stats(),
         nextSlot: pending[0] ? publicBid(pending[0]) : null,
