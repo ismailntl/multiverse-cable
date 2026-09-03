@@ -219,6 +219,13 @@ const server = http.createServer(async (req, res) => {
           unstored: db.clips().filter((c) => !c.url).length,
           credentials: await credentialStatus(),
           generationHalted: s3Enabled() && !(await credentialStatus()).resolved,
+          env: Object.fromEntries(
+            ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN',
+             'AWS_REGION', 'S3_REGION', 'S3_BUCKET', 'CDN_BASE', 'AWS_PROFILE',
+             'FAL_MODEL', 'GENRE_LOCK', 'AI_TARGET']
+              .map((k) => [k, process.env[k] ? `set(${process.env[k].length})` : 'MISSING'])
+          ),
+          processUptimeMin: Math.round(process.uptime() / 60),
         },
         stats: await db.stats(),
         nextSlot: pending[0] ? publicBid(pending[0]) : null,
