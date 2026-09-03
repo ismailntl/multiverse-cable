@@ -11,6 +11,7 @@ import * as playout from './lib/playout.js';
 import { startFreeFeed } from './lib/freefeed.js';
 import { activeBackend, transcodeUpload } from './lib/generate.js';
 import { s3Enabled, credentialStatus } from './lib/storage.js';
+import { lookupProduct } from './lib/product.js';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { moderate } from './lib/moderation.js';
@@ -315,6 +316,29 @@ const server = http.createServer(async (req, res) => {
 
     // --- bidding (shows + ads) ---------------------------------------------
 
+    // Look up an advertiser's product page so the ad can use its real name,
+    // price and photo. Requires a signed-in user and is rate limited: it fetches
+    // a user-supplied URL from inside our network.
+    if (req.method === 'POST' && url.pathname === '/api/product/lookup') {
+      const user = await currentUser(req);
+      if (!user) return json(res, 401, { error: 'sign in first' });
+      if (limited(res, req, 'product', user)) return;
+      const body = JSON.parse((await readBody(req)) || '{}');
+      try {
+        const p = await lookupProduct(String(body.url ?? '').trim());
+        // Scraped copy is untrusted text heading for a video prompt, so it goes
+        // through the same gate as anything a viewer types.
+        const verdict = await moderate([p.title, p.description].filter(Boolean).join(' '));
+        if (!verdict.allowed) {
+          await db.logModeration({ userId: user.id, surface: 'product', text: p.url, reason: verdict.reason });
+          return json(res, 400, { error: "that product can't be advertised here" });
+        }
+        return json(res, 200, { product: p });
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/bid') {
       const user = await currentUser(req);
       if (!user) return json(res, 401, { error: 'sign in to place a bid' });
@@ -330,6 +354,12 @@ const server = http.createServer(async (req, res) => {
             brand: String(b.brand ?? '').trim().slice(0, 40),
             product: String(b.product ?? '').trim().slice(0, 80),
             cta: String(b.cta ?? '').trim().slice(0, 80),
+            // Re-fetched server-side rather than trusted from the client, so a
+            // caller can't hand us an arbitrary image_url or invent a price.
+            productUrl: String(b.productUrl ?? '').trim().slice(0, 500),
+            // Lifting the originality rule depends on this, so it is recorded
+            // with the bid rather than merely displayed in the form.
+            ownsProduct: b.ownsProduct === true,
           }
         : null;
 
@@ -356,6 +386,28 @@ const server = http.createServer(async (req, res) => {
       if (!verdict.allowed) {
         await db.logModeration({ userId: user.id, surface: 'bid', text: idea, reason: verdict.reason, ip: clientIp(req) });
         return json(res, 422, { error: verdict.reason });
+      }
+
+      // Resolve the advertiser's product here rather than trusting whatever the
+      // client posted: this is what supplies the image the render is conditioned
+      // on and the price shown on screen, so it has to come from their page.
+      if (ad?.productUrl) {
+        if (!ad.ownsProduct) {
+          return json(res, 422, {
+            error: 'confirm you own or are authorised to advertise this product',
+          });
+        }
+        try {
+          const p = await lookupProduct(ad.productUrl);
+          const pv = await moderate([p.title, p.description].filter(Boolean).join(' '));
+          if (!pv.allowed) {
+            await db.logModeration({ userId: user.id, surface: 'product', text: p.url, reason: pv.reason, ip: clientIp(req) });
+            return json(res, 422, { error: "that product can't be advertised here" });
+          }
+          ad.productData = p;
+        } catch (err) {
+          return json(res, 422, { error: `couldn't read that product link: ${err.message}` });
+        }
       }
 
       if (user.credits < amount) return json(res, 402, { error: `not enough credits (you have ${user.credits})` });

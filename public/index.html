@@ -175,6 +175,14 @@
      Real-or-AI moved off the video entirely and lives under it */
   .tvbottom { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
               pointer-events: none; display: flex; flex-direction: column; align-items: flex-start; }
+  .hintlite { color: var(--faint); font-weight: 400; font-size: 11px; }
+  .prodprev { display: flex; gap: 10px; align-items: center; padding: 8px; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--panel-2); }
+  .prodprev img { width: 54px; height: 54px; object-fit: cover; border-radius: 6px; flex: 0 0 auto; }
+  .prodprev .pp-t { font-weight: 700; font-size: 12.5px; }
+  .prodprev .pp-p { color: var(--green); font-family: var(--mono); font-size: 12px; }
+  .checkline { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--dim); }
+  .checkline input { margin-top: 2px; flex: 0 0 auto; }
   /* An ad has to be identifiable as an ad while it plays. */
   .adbadge { margin-left: 8px; padding: 1px 7px; border-radius: 4px; font-weight: 800;
     font-size: 11px; letter-spacing: 1.2px; background: var(--amber); color: #1a1206;
@@ -1102,6 +1110,14 @@
         </div>
         <form id="bidForm" onsubmit="return false">
           <div id="adFields" style="display:none;gap:12px;">
+            <label class="field">Product link <span class="hintlite">optional — we read the name, price and photo</span>
+              <input id="productUrl" maxlength="500" placeholder="https://yourshop.com/the-thing">
+            </label>
+            <div id="productPreview" class="prodprev" hidden></div>
+            <label class="checkline" id="ownsLine" hidden>
+              <input type="checkbox" id="ownsProduct">
+              <span>I own this product or am authorised to advertise it and its branding.</span>
+            </label>
             <label class="field">Fictional brand
               <input id="brand" maxlength="40" placeholder="e.g. GlorpCo">
             </label>
@@ -2580,6 +2596,38 @@ function setMode(m) {
     : 'Bids collect for a short window — the highest bid when the clock hits zero programs the next slot.';
   updatePricing(true);
 }
+let productLookupSeq = 0;
+async function previewProduct() {
+  const el = $('productPreview'), owns = $('ownsLine');
+  const url = $('productUrl').value.trim();
+  if (!url) { el.hidden = true; owns.hidden = true; return; }
+  const seq = ++productLookupSeq;
+  el.hidden = false;
+  el.innerHTML = '<div class="pp-t">Reading that page…</div>';
+  try {
+    const r = await api('/api/product/lookup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    if (seq !== productLookupSeq) return;      // a newer lookup already ran
+    const p = r.product;
+    el.innerHTML =
+      (p.image ? `<img src="${p.image}" alt="">` : '') +
+      `<div><div class="pp-t">${(p.title || 'Unnamed product')}</div>` +
+      `<div class="pp-p">${p.price || 'no price found'} · ${p.site || ''}</div></div>`;
+    owns.hidden = false;
+  } catch (e) {
+    if (seq !== productLookupSeq) return;
+    el.innerHTML = `<div class="pp-t">Couldn't read that link — ${e.message}</div>`;
+    owns.hidden = true;
+  }
+}
+let productTimer = null;
+$('productUrl')?.addEventListener('input', () => {
+  clearTimeout(productTimer);
+  productTimer = setTimeout(previewProduct, 600);   // debounce while typing
+});
+
 on('tabShow', () => setMode('show'));
 on('tabAd', () => setMode('ad'));
 
@@ -2624,7 +2672,11 @@ on('bidBtn', async () => {
       idemKey: bidIdemKey(),
     };
     if (sec) body.durationSec = sec;
-    if (mode === 'ad') { body.brand = $('brand').value; body.product = $('product').value; body.cta = $('cta').value; }
+    if (mode === 'ad') {
+      body.brand = $('brand').value; body.product = $('product').value; body.cta = $('cta').value;
+      const purl = $('productUrl').value.trim();
+      if (purl) { body.productUrl = purl; body.ownsProduct = $('ownsProduct').checked; }
+    }
     const r = await api('/api/bid', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
