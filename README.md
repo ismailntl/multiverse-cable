@@ -31,7 +31,8 @@ layers.
 
 See [docs/POLICY.md](docs/POLICY.md) for the content rules,
 [docs/COSTS.md](docs/COSTS.md) for what it costs to run,
-[docs/PRODUCT_ADS.md](docs/PRODUCT_ADS.md) for the paid product-ad design, and
+[docs/PRODUCT_ADS.md](docs/PRODUCT_ADS.md) for the paid product-ad design,
+[docs/BUSINESS.md](docs/BUSINESS.md) for where this is going commercially, and
 [docs/STREAMING.md](docs/STREAMING.md) for restreaming to Twitch/Kick.
 
 ## How it works
