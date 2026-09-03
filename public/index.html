@@ -133,8 +133,9 @@
      that made the picture look small. No cropping — the box changes, not the
      image. */
   .tv video { display: block; width: 100%; aspect-ratio: var(--clipar, 16/9); object-fit: contain; background: #000; }
-  .tv .scanlines { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay; opacity: .35;
-    background: repeating-linear-gradient(0deg, #000 0 1px, transparent 1px 3px); }
+  /* Scanline overlay removed: at .35 it read as damage, and it stamped the same
+     degraded texture onto every clip -- flattening the very difference the
+     Real-or-AI round asks viewers to spot. */
   .tv .static { position: absolute; inset: 0; display: none; pointer-events: none;
     background: repeating-conic-gradient(#111 0% .0001%, #999 .0001% .0002%);
     filter: contrast(1.7); animation: flick .08s steps(2) infinite; }
@@ -988,7 +989,6 @@
       <div class="stage" id="stage">
         <div class="tv tuning" id="tv">
           <video id="player" autoplay muted playsinline></video>
-          <div class="scanlines"></div>
           <div class="static"></div>
           <div class="tvui" id="tvui">
             <div class="tvtop">
