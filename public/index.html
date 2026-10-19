@@ -2775,7 +2775,10 @@ async function refresh() {
       if (!$('packs').dataset.filled) {
         $('packs').dataset.filled = '1';
         $('packs').innerHTML = '';
-        for (const p of s.packs) {
+        if (!s.paymentsEnabled) {
+          $('packs').innerHTML = '<div class="msg">Credit sales are paused for now.</div>';
+        }
+        for (const p of s.paymentsEnabled ? s.packs : []) {
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.textContent = `${p.label} — $${(p.priceCents / 100).toFixed(2)}` + (s.stripeEnabled ? '' : ' (demo)');
