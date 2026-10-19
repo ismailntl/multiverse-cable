@@ -238,6 +238,7 @@ const server = http.createServer(async (req, res) => {
         genres: GENRES.map((g) => ({ key: g.key, label: g.label })),
         packs: config.creditPacks,
         stripeEnabled: stripeEnabled(),
+        paymentsEnabled: config.paymentsEnabled,
         termsVersion: config.termsVersion,
         user: user ? publicUser(user) : null,
         myBids: user ? (await db.bidsFor(user.id, 10)).map(publicBid) : [],
@@ -304,6 +305,7 @@ const server = http.createServer(async (req, res) => {
       if (limited(res, req, 'checkout')) return;
       const user = await currentUser(req);
       if (!user) return json(res, 401, { error: 'sign in first' });
+      if (!config.paymentsEnabled) return json(res, 503, { error: 'credit sales are paused for now' });
       const b = JSON.parse((await readBody(req)) || '{}');
       const pack = findPack(b.packId);
       if (!pack) return json(res, 400, { error: 'unknown credit pack' });
